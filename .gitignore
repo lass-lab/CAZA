@@ -1,0 +1,13 @@
+tags
+
+*.o
+
+*.d
+
+ttest.sh
+
+blkzone
+
+zenfs
+
+*.sh

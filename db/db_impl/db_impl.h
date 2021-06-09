@@ -64,7 +64,6 @@
 #include "util/thread_local.h"
 
 namespace ROCKSDB_NAMESPACE {
-
 class Arena;
 class ArenaWrappedDBIter;
 class InMemoryStatsHistoryIterator;
@@ -136,7 +135,8 @@ class DBImpl : public DB {
   // No copying allowed
   DBImpl(const DBImpl&) = delete;
   void operator=(const DBImpl&) = delete;
-
+  //heerock(Make ZenFS be aware of DBImpl)
+  std::string get_name(){return dbname_;};
   virtual ~DBImpl();
 
   // ---- Implementations of the DB interface ----
@@ -1026,7 +1026,8 @@ class DBImpl : public DB {
   // Flag to check whether we allocated and own the info log file
   bool own_info_log_;
   const DBOptions initial_db_options_;
-  Env* const env_;
+  Env* env_;
+  //Env* const env_;
   std::shared_ptr<IOTracer> io_tracer_;
   const ImmutableDBOptions immutable_db_options_;
   FileSystemPtr fs_;
@@ -1220,7 +1221,6 @@ class DBImpl : public DB {
   friend class WriteBatchWithIndex;
   friend class WriteUnpreparedTxnDB;
   friend class WriteUnpreparedTxn;
-
 #ifndef ROCKSDB_LITE
   friend class ForwardIterator;
 #endif
@@ -2169,7 +2169,6 @@ class DBImpl : public DB {
 
   bool wal_in_db_path_;
 };
-
 extern Options SanitizeOptions(const std::string& db, const Options& src);
 
 extern DBOptions SanitizeOptions(const std::string& db, const DBOptions& src);

@@ -30,6 +30,9 @@
 #include "rocksdb/options.h"
 #include "rocksdb/thread_status.h"
 
+//heerock(Make ZenFS be aware of DBImpl)
+//#include "db/db_impl/db_impl.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 class FileLock;
@@ -43,6 +46,8 @@ class Slice;
 struct ImmutableDBOptions;
 struct MutableDBOptions;
 class RateLimiter;
+
+class DBImpl;
 
 using AccessPattern = RandomAccessFile::AccessPattern;
 using FileAttributes = Env::FileAttributes;
@@ -156,11 +161,15 @@ struct IODebugContext {
 // retryable.
 class FileSystem {
  public:
+  //heerock(Make ZenFS be aware of DBImpl)
+  DBImpl* my_impl_;
   FileSystem();
 
   // No copying allowed
   FileSystem(const FileSystem&) = delete;
 
+  //heerock(Make ZenFS be aware of DBImpl)
+  virtual void SetDBPointer(DBImpl* my_db);
   virtual ~FileSystem();
 
   virtual const char* Name() const = 0;
@@ -1047,9 +1056,12 @@ class FSDirectory {
 // functionality of another Env.
 class FileSystemWrapper : public FileSystem {
  public:
+  
   // Initialize an EnvWrapper that delegates all calls to *t
   explicit FileSystemWrapper(std::shared_ptr<FileSystem> t) : target_(t) {}
   ~FileSystemWrapper() override {}
+
+  //virtual void SetDBPointer(DBImpl* my_db) = 0;
 
   const char* Name() const override { return target_->Name(); }
 

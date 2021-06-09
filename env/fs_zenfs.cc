@@ -158,6 +158,12 @@ ZenFS::~ZenFS() {
   delete zbd_;
 }
 
+void ZenFS::SetDBPointer(DBImpl* db_ptr){
+    fprintf(stderr, "SetDBPointer in ZenFS\n");
+    dbptr_ = db_ptr; 
+    zbd_->SetDBPointer(db_ptr);
+}
+
 void ZenFS::LogFiles() {
   std::map<std::string, ZoneFile*>::iterator it;
   uint64_t total_size = 0;
@@ -215,7 +221,7 @@ IOStatus ZenFS::RollMetaZone() {
   ZenMetaLog* new_meta_log;
   Zone *new_meta_zone, *old_meta_zone;
   IOStatus s;
-
+  
   new_meta_zone = zbd_->AllocateMetaZone();
   if (!new_meta_zone) {
     assert(false);  // TMP
@@ -383,7 +389,6 @@ IOStatus ZenFS::NewWritableFile(const std::string& fname,
                                 IODebugContext* /*dbg*/) {
   ZoneFile* zoneFile;
   IOStatus s;
-
   Debug(logger_, "New writable file: %s direct: %d\n", fname.c_str(),
         file_opts.use_direct_writes);
 
@@ -872,7 +877,6 @@ static std::string GetLogFilename(std::string bdev) {
 Status NewZenFS(FileSystem** fs, const std::string& bdevname) {
   std::shared_ptr<Logger> logger;
   Status s;
-
 #ifndef NDEBUG
   s = Env::Default()->NewLogger(GetLogFilename(bdevname), &logger);
   if (!s.ok()) {

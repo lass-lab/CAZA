@@ -25,6 +25,12 @@ Status FileSystem::Load(const std::string& value,
 #endif
   return s;
 }
+//heerock(Make ZenFS be aware of DBImpl)
+
+void FileSystem::SetDBPointer(DBImpl* my_db){ 
+    fprintf(stderr, "SetDBPointer in FileSystem\n");
+    my_impl_ = my_db;
+}
 
 IOStatus FileSystem::ReuseWritableFile(const std::string& fname,
                                        const std::string& old_fname,

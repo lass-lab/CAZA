@@ -140,6 +140,7 @@ struct EnvOptions {
 
 class Env {
  public:
+
   struct FileAttributes {
     // File name
     std::string name;

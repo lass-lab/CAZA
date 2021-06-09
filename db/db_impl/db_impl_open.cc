@@ -31,14 +31,13 @@ Options SanitizeOptions(const std::string& dbname, const Options& src) {
       SanitizeOptions(immutable_db_options, ColumnFamilyOptions(src));
   return Options(db_options, cf_options);
 }
-
+//heerock(Make ZenFS be aware of DBImpl)
 DBOptions SanitizeOptions(const std::string& dbname, const DBOptions& src) {
   DBOptions result(src);
 
   if (result.env == nullptr) {
     result.env = Env::Default();
   }
-
   // result.max_open_files means an "infinite" open files.
   if (result.max_open_files != -1) {
     int max_max_open_files = port::GetMaxOpenFiles();

@@ -162,10 +162,13 @@ Zone *ZonedBlockDevice::GetIOZone(uint64_t offset) {
 
 ZonedBlockDevice::ZonedBlockDevice(std::string bdevname,
                                    std::shared_ptr<Logger> logger)
-    : filename_("/dev/" + bdevname), logger_(logger) {
-  written_data_ = 0;    
+    : filename_("/dev/" + bdevname), logger_(logger), dbptr_(nullptr) {
   Info(logger_, "New Zoned Block Device: %s", filename_.c_str());
 };
+
+void ZonedBlockDevice::SetDBPointer(DBImpl* dbptr){
+    dbptr_ = dbptr;
+}
 
 IOStatus ZonedBlockDevice::Open(bool readonly) {
   struct zbd_zone *zone_rep;
@@ -403,9 +406,8 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
   int new_zone = 0;
   Status s;
-
   io_zones_mtx.lock();
-
+  fprintf(stderr, "AllocateZone Call DB : %s\n", dbptr_->get_name().c_str());
   /* Make sure we are below the zone open limit */
   {
     std::unique_lock<std::mutex> lk(zone_resources_mtx_);

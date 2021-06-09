@@ -26,9 +26,10 @@
 
 #include "rocksdb/env.h"
 #include "rocksdb/io_status.h"
+#include "db/db_impl/db_impl.h"
 
 namespace ROCKSDB_NAMESPACE {
-
+class DBImpl;
 class ZonedBlockDevice;
 
 class Zone {
@@ -83,10 +84,13 @@ class ZonedBlockDevice {
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
  
+  DBImpl* dbptr_;
  public:
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
   virtual ~ZonedBlockDevice();
+
+  void SetDBPointer(DBImpl* dbptr);
 
   IOStatus Open(bool readonly = false);
 

@@ -11,3 +11,7 @@ blkzone
 zenfs
 
 *.sh
+
+*.swp
+
+*.swo

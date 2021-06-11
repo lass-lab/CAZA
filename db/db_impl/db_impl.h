@@ -18,6 +18,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
+#include <string>
+
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_job.h"
@@ -135,10 +138,28 @@ class DBImpl : public DB {
   // No copying allowed
   DBImpl(const DBImpl&) = delete;
   void operator=(const DBImpl&) = delete;
+  virtual ~DBImpl();
+  
   //heerock(Make ZenFS be aware of DBImpl)
   std::string get_name(){return dbname_;};
-  virtual ~DBImpl();
+  
+  void GetLSMVersion(){
+        
+       for(auto* cfd : *versions_->GetColumnFamilySet()) {
+            fprintf(stderr, "name : %s\n", cfd->GetName().c_str());
+            auto* version = cfd->current();
+            auto* sti = version->storage_info();
+            for(int i = 0; i < sti->num_levels(); i++){
+                fprintf(stderr, "%d\n", sti->NumLevelFiles(i));
+                
+                for(auto* f : sti->LevelFiles(i)){
+                    std::cout << "smallest internal key : " << f->smallest.rep()<<std::endl;
+                    std::cout << "smallest internal key : " << f->largest.rep()<<std::endl;
+                }
 
+            }
+        }
+  };
   // ---- Implementations of the DB interface ----
 
   using DB::Resume;

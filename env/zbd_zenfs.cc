@@ -407,7 +407,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
   int new_zone = 0;
   Status s;
   io_zones_mtx.lock();
-  fprintf(stderr, "AllocateZone Call DB : %s\n", dbptr_->get_name().c_str());
+  
   /* Make sure we are below the zone open limit */
   {
     std::unique_lock<std::mutex> lk(zone_resources_mtx_);
@@ -416,6 +416,8 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
       return false;
     });
   }
+  fprintf(stderr, "AllocateZone Call DB : %s\n", dbptr_->get_name().c_str());
+  dbptr_->GetLSMVersion();
 
   /* Reset any unused zones and finish used zones under capacity treshold*/
   for (const auto z : io_zones) {

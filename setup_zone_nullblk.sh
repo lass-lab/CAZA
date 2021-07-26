@@ -4,13 +4,14 @@
 #ZONE_SZ=256
 #SIZE=$(($ZONE_SZ * 400))
 
-#origin
-# 160 x 256MB Zones - 40GB
-ZONE_SZ=256
-SIZE=$(($ZONE_SZ * 160))
+#experiment 1
+#ZONE_SZ=256
+#SIZE=$(($ZONE_SZ * 160))
 
-
-
+#experiment 2
+ZONE_SZ=128
+SIZE=$(($ZONE_SZ * 320))
+echo $SIZE
 
 modprobe null_blk
 cd /sys/kernel/config/nullb &&

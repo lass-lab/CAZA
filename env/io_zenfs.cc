@@ -125,8 +125,6 @@ Status ZoneFile::DecodeFrom(Slice* input) {
 }
 
 Status ZoneFile::MergeUpdate(ZoneFile* update) {
-  zbd_->zone_cleaning_mtx.lock();
-  fprintf(stderr, "\n\n*****MergeUpdate*****\n\n");
   if (file_id_ != update->GetID())
     return Status::Corruption("ZoneFile update", "ID missmatch");
 
@@ -138,15 +136,11 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
     ZoneExtent* extent = update_extents[i];
     Zone* zone = extent->zone_;
     zone->used_capacity_ += extent->length_;
-    //extents_.push_back(new ZoneExtent(extent->start_, extent->length_, zone));
-    
     ZoneExtent* new_extent = new ZoneExtent(extent->start_,extent->length_, zone);
-//    zone->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true));
     extents_.push_back(new_extent);
   }
 
   MetadataSynced();
-  zbd_->zone_cleaning_mtx.unlock();
   return Status::OK();
 }
 
@@ -178,14 +172,6 @@ ZoneFile::~ZoneFile() {
     Zone* zone = (*e)->zone_;
     
     assert(zone);
-    if(zone->used_capacity_.load() < (*e)->length_){
-        std::vector<Zone *> temp;
-        temp.push_back(zone);
-        zbd_->printZoneStatus(temp);
-        fprintf(stderr, "file name : %s\n",filename_.c_str());
-        fprintf(stderr, "extent length : %u\n", (*e)->length_);
-    }
-
     assert(zone->used_capacity_.load() >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
     //(ZC) invalidate.
@@ -316,7 +302,7 @@ void ZoneFile::PushExtent() {
   ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
-  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true));
+  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length));
 
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
@@ -357,14 +343,14 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
 
     wr_size = left;
     if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
-    //fprintf(stderr,"Try To Append\n");
     s = active_zone_->Append((char*)data + offset, wr_size);
-    if (!s.ok()){ 
-        std::vector<Zone *> temp;
-        temp.push_back(active_zone_);
-        zbd_->printZoneStatus(temp);
-        return s;
     
+    zbd_->append_mtx_.lock();
+    zbd_->WR_DATA += (unsigned long long)wr_size;
+    zbd_->append_mtx_.unlock();
+    
+    if (!s.ok()){ 
+        return s;
     }
 
     fileSize += wr_size;

@@ -1,0 +1,664 @@
+ZONE_CAP_SECS
+0x040000
+ZONE_CAP
+134217728
+BASE_FZ
+127506841
+WB_SIZE
+255013682
+TARGET_FZ_BASE
+255013682
+MAX_BYTES_FOR_LEVEL_BASE
+510027364
+**********TOTAL WRITTEN DATA AMOUNT TO DEVICE : 0**********
+ZenFS file system created. Free space: 39808 MB
+**********TOTAL WRITTEN DATA AMOUNT TO DEVICE : 0**********
+Initializing RocksDB Options from the specified file
+Initializing RocksDB Options from command-line flags
+Keys:       16 bytes each (+ 0 bytes user-defined timestamp)
+Values:     4096 bytes each (4096 bytes after compression)
+Entries:    6528100
+Prefix:    0 bytes
+Keys per prefix:    0
+RawSize:    25600.0 MB (estimated)
+FileSize:   25600.0 MB (estimated)
+Write rate: 0 bytes/second
+Read rate: 0 ops/second
+Compression: Snappy
+Compression sampling rate: 0
+Memtablerep: skip_list
+Perf Level: 1
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+Initializing RocksDB Options from the specified file
+Initializing RocksDB Options from command-line flags
+DB path: [rocksdbtest/dbbench]
+fillrandom   :      14.348 micros/op 69696 ops/sec;  273.3 MB/s
+DB path: [rocksdbtest/dbbench]
+********** GC triggered count : 1**********
+zone lifetime : 0
+invalid_ratio : 0.999427
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.337973
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.498588
+zone lifetime : 0
+invalid_ratio : 0.000073
+zone lifetime : 4
+invalid_ratio : 0.000019
+zone lifetime : 4
+invalid_ratio : 0.338736
+zone lifetime : 4
+invalid_ratio : 0.000019
+zone lifetime : 4
+invalid_ratio : 0.498586
+zone lifetime : 4
+invalid_ratio : 0.498585
+zone lifetime : 4
+invalid_ratio : 0.000020
+zone lifetime : 4
+invalid_ratio : 0.498586
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.338581
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000045
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.337546
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.498588
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498588
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.339316
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.425040
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.412251
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498588
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.337973
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 4
+invalid_ratio : 0.179282
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 3
+invalid_ratio : 0.823454
+zone lifetime : 3
+invalid_ratio : 0.498574
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498573
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.658437
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000023
+zone lifetime : 4
+invalid_ratio : 0.019717
+zone lifetime : 4
+invalid_ratio : 0.657944
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000013
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.657819
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.179709
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.656584
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.498588
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000018
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.816533
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000026
+zone lifetime : 4
+invalid_ratio : 0.691417
+zone lifetime : 4
+invalid_ratio : 0.682731
+zone lifetime : 4
+invalid_ratio : 0.000027
+zone lifetime : 4
+invalid_ratio : 0.697351
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.701616
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000022
+zone lifetime : 4
+invalid_ratio : 0.498587
+zone lifetime : 4
+invalid_ratio : 0.000007
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.925216
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.166779
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 2
+invalid_ratio : 1.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.766707
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000052
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.166686
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.764543
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000021
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.763369
+zone lifetime : 3
+invalid_ratio : 0.166375
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.024978
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.764110
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000040
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000063
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.498588
+zone lifetime : 3
+invalid_ratio : 0.065839
+zone lifetime : 3
+invalid_ratio : 0.429923
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.581595
+zone lifetime : 3
+invalid_ratio : 0.916992
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.094526
+zone lifetime : 3
+invalid_ratio : 0.401236
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.108869
+zone lifetime : 3
+invalid_ratio : 0.386893
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.627494
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.369681
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.974204
+zone lifetime : 3
+invalid_ratio : 0.524384
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.988547
+zone lifetime : 3
+invalid_ratio : 0.510040
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 3
+invalid_ratio : 0.498587
+zone lifetime : 3
+invalid_ratio : 0.000020
+Total Copied Data in GC : 23138717696
+readrandom   :      23.051 micros/op 43382 ops/sec;  170.1 MB/s (6528100 of 6528100 found)
+
+**********TOTAL WRITTEN DATA AMOUNT TO DEVICE : 124795383808**********

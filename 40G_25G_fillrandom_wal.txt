@@ -1,0 +1,915 @@
+********** GC triggered count : 1**********
+zone lifetime : 0
+invalid_ratio : 0.999745
+zone lifetime : 4
+invalid_ratio : 0.749291
+zone lifetime : 3
+invalid_ratio : 0.672516
+zone lifetime : 3
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000009
+zone lifetime : 4
+invalid_ratio : 0.749292
+zone lifetime : 3
+invalid_ratio : 0.000038
+zone lifetime : 0
+invalid_ratio : 0.000053
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749277
+zone lifetime : 4
+invalid_ratio : 0.749277
+zone lifetime : 4
+invalid_ratio : 0.749277
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000037
+zone lifetime : 3
+invalid_ratio : 0.000040
+zone lifetime : 3
+invalid_ratio : 0.945956
+zone lifetime : 3
+invalid_ratio : 0.446960
+zone lifetime : 3
+invalid_ratio : 0.000044
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000039
+zone lifetime : 3
+invalid_ratio : 0.550212
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.423045
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.143123
+zone lifetime : 4
+invalid_ratio : 0.421932
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.749294
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 3
+invalid_ratio : 0.000036
+zone lifetime : 4
+invalid_ratio : 0.000032
+zone lifetime : 4
+invalid_ratio : 0.343322
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000005
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.337969
+zone lifetime : 4
+invalid_ratio : 0.000026
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000007
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.337959
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.337957
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749292
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.273031
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.064984
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.749292
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 3
+invalid_ratio : 0.000040
+zone lifetime : 3
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 3
+invalid_ratio : 0.841056
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 3
+invalid_ratio : 0.000040
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.092984
+zone lifetime : 4
+invalid_ratio : 0.245023
+zone lifetime : 3
+invalid_ratio : 0.000040
+zone lifetime : 3
+invalid_ratio : 0.000030
+zone lifetime : 4
+invalid_ratio : 0.337968
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.667369
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000032
+zone lifetime : 4
+invalid_ratio : 0.180071
+zone lifetime : 4
+invalid_ratio : 0.000026
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.048686
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000054
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.000032
+zone lifetime : 4
+invalid_ratio : 0.000021
+zone lifetime : 4
+invalid_ratio : 0.000034
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.186085
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.000530
+zone lifetime : 4
+invalid_ratio : 0.000013
+zone lifetime : 4
+invalid_ratio : 0.000010
+zone lifetime : 4
+invalid_ratio : 0.000039
+zone lifetime : 4
+invalid_ratio : 0.000012
+zone lifetime : 4
+invalid_ratio : 0.000029
+zone lifetime : 3
+invalid_ratio : 0.481383
+zone lifetime : 3
+invalid_ratio : 0.250744
+zone lifetime : 3
+invalid_ratio : 0.250745
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 3
+invalid_ratio : 0.000038
+zone lifetime : 3
+invalid_ratio : 0.000036
+zone lifetime : 4
+invalid_ratio : 0.000046
+zone lifetime : 3
+invalid_ratio : 0.000031
+zone lifetime : 3
+invalid_ratio : 0.284191
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.749294
+zone lifetime : 4
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 0.000034
+zone lifetime : 4
+invalid_ratio : 0.000040
+zone lifetime : 4
+invalid_ratio : 0.000016
+zone lifetime : 4
+invalid_ratio : 0.689267
+zone lifetime : 4
+invalid_ratio : 0.000041
+Total Copied Data in GC : 29933535232
+fillrandom   :      20.907 micros/op 47831 ops/sec;  187.6 MB/s
+DB path: [rocksdbtest/dbbench]
+********** GC triggered count : 2**********
+zone lifetime : 4
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.000029
+zone lifetime : 4
+invalid_ratio : 0.000012
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000020
+zone lifetime : 4
+invalid_ratio : 0.030481
+zone lifetime : 4
+invalid_ratio : 0.171467
+zone lifetime : 4
+invalid_ratio : 0.374926
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.371515
+zone lifetime : 4
+invalid_ratio : 0.292236
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.495697
+zone lifetime : 4
+invalid_ratio : 0.501434
+zone lifetime : 4
+invalid_ratio : 0.265060
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.130981
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.696289
+zone lifetime : 4
+invalid_ratio : 0.534348
+zone lifetime : 4
+invalid_ratio : 0.445572
+zone lifetime : 4
+invalid_ratio : 0.557297
+zone lifetime : 4
+invalid_ratio : 0.530121
+zone lifetime : 4
+invalid_ratio : 0.684814
+zone lifetime : 4
+invalid_ratio : 0.708374
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.713516
+zone lifetime : 4
+invalid_ratio : 0.749268
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.594009
+zone lifetime : 4
+invalid_ratio : 0.337936
+zone lifetime : 4
+invalid_ratio : 0.709320
+zone lifetime : 4
+invalid_ratio : 0.127182
+zone lifetime : 4
+invalid_ratio : 0.422668
+zone lifetime : 4
+invalid_ratio : 0.673340
+zone lifetime : 4
+invalid_ratio : 0.244980
+zone lifetime : 4
+invalid_ratio : 0.265320
+zone lifetime : 3
+invalid_ratio : 0.000035
+zone lifetime : 4
+invalid_ratio : 0.092957
+zone lifetime : 4
+invalid_ratio : 0.000076
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.999527
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 0
+invalid_ratio : 0.000041
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.526901
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000038
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.577286
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.108246
+zone lifetime : 4
+invalid_ratio : 0.652969
+zone lifetime : 4
+invalid_ratio : 0.002869
+zone lifetime : 4
+invalid_ratio : 0.247849
+zone lifetime : 4
+invalid_ratio : 0.392517
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.498566
+zone lifetime : 4
+invalid_ratio : 0.518921
+zone lifetime : 4
+invalid_ratio : 0.233231
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.268204
+zone lifetime : 4
+invalid_ratio : 0.820160
+zone lifetime : 4
+invalid_ratio : 0.159195
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.326965
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.248230
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000041
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 3
+invalid_ratio : 0.000037
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 3
+invalid_ratio : 0.000037
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000038
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.250717
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 3
+invalid_ratio : 0.000042
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.204926
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000011
+zone lifetime : 4
+invalid_ratio : 1.000000
+zone lifetime : 4
+invalid_ratio : 0.749292
+zone lifetime : 5
+invalid_ratio : 0.005531
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 5
+invalid_ratio : 0.000042
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 3
+invalid_ratio : 0.000032
+zone lifetime : 5
+invalid_ratio : 0.000042
+zone lifetime : 5
+invalid_ratio : 0.000032
+zone lifetime : 5
+invalid_ratio : 0.028804
+zone lifetime : 5
+invalid_ratio : 0.000042
+zone lifetime : 5
+invalid_ratio : 0.000034
+zone lifetime : 4
+invalid_ratio : 0.000034
+zone lifetime : 5
+invalid_ratio : 0.098889
+zone lifetime : 5
+invalid_ratio : 0.171374
+zone lifetime : 5
+invalid_ratio : 0.041051
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 5
+invalid_ratio : 0.214593
+zone lifetime : 5
+invalid_ratio : 0.236437
+zone lifetime : 5
+invalid_ratio : 0.038399
+zone lifetime : 5
+invalid_ratio : 0.031385
+zone lifetime : 5
+invalid_ratio : 0.170504
+zone lifetime : 5
+invalid_ratio : 0.012968
+zone lifetime : 5
+invalid_ratio : 0.000035
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 3
+invalid_ratio : 0.000000
+zone lifetime : 0
+invalid_ratio : 0.999632
+zone lifetime : 3
+invalid_ratio : 0.841056
+Total Copied Data in GC : 22713208832
+********** GC triggered count : 3**********
+zone lifetime : 5
+invalid_ratio : 1.000000
+zone lifetime : 3
+invalid_ratio : 0.509979
+zone lifetime : 4
+invalid_ratio : 0.023605
+zone lifetime : 4
+invalid_ratio : 0.239243
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.527344
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.511322
+zone lifetime : 4
+invalid_ratio : 0.237885
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.661026
+zone lifetime : 4
+invalid_ratio : 0.714127
+zone lifetime : 4
+invalid_ratio : 0.644836
+zone lifetime : 4
+invalid_ratio : 0.690552
+zone lifetime : 4
+invalid_ratio : 0.440430
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.736374
+zone lifetime : 4
+invalid_ratio : 0.668930
+zone lifetime : 4
+invalid_ratio : 0.652969
+zone lifetime : 4
+invalid_ratio : 0.462784
+zone lifetime : 4
+invalid_ratio : 0.457657
+zone lifetime : 4
+invalid_ratio : 0.608963
+zone lifetime : 4
+invalid_ratio : 0.726410
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.594879
+zone lifetime : 4
+invalid_ratio : 0.625626
+zone lifetime : 4
+invalid_ratio : 0.371506
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.583847
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.356094
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.498566
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 5
+invalid_ratio : 0.030732
+zone lifetime : 5
+invalid_ratio : 0.000030
+zone lifetime : 5
+invalid_ratio : 0.000007
+zone lifetime : 5
+invalid_ratio : 0.000037
+zone lifetime : 5
+invalid_ratio : 0.000025
+zone lifetime : 5
+invalid_ratio : 0.000001
+zone lifetime : 5
+invalid_ratio : 0.000032
+zone lifetime : 5
+invalid_ratio : 0.000030
+zone lifetime : 5
+invalid_ratio : 0.000021
+zone lifetime : 5
+invalid_ratio : 0.013620
+zone lifetime : 5
+invalid_ratio : 0.250738
+zone lifetime : 5
+invalid_ratio : 0.293735
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.000023
+zone lifetime : 5
+invalid_ratio : 0.042486
+zone lifetime : 5
+invalid_ratio : 0.000011
+zone lifetime : 5
+invalid_ratio : 0.043338
+zone lifetime : 5
+invalid_ratio : 0.000028
+zone lifetime : 5
+invalid_ratio : 0.247869
+zone lifetime : 5
+invalid_ratio : 0.000021
+zone lifetime : 5
+invalid_ratio : 0.007387
+zone lifetime : 5
+invalid_ratio : 0.029785
+zone lifetime : 5
+invalid_ratio : 0.024127
+zone lifetime : 5
+invalid_ratio : 0.245470
+zone lifetime : 5
+invalid_ratio : 0.000043
+zone lifetime : 5
+invalid_ratio : 0.250717
+zone lifetime : 5
+invalid_ratio : 0.198975
+zone lifetime : 5
+invalid_ratio : 0.122635
+zone lifetime : 5
+invalid_ratio : 0.393021
+zone lifetime : 5
+invalid_ratio : 0.494766
+zone lifetime : 5
+invalid_ratio : 0.251770
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.250717
+zone lifetime : 5
+invalid_ratio : 0.250717
+zone lifetime : 5
+invalid_ratio : 0.020172
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.483566
+zone lifetime : 5
+invalid_ratio : 0.285797
+zone lifetime : 5
+invalid_ratio : 0.195465
+zone lifetime : 5
+invalid_ratio : 0.530777
+zone lifetime : 5
+invalid_ratio : 0.018814
+zone lifetime : 5
+invalid_ratio : 0.231903
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.501434
+zone lifetime : 5
+invalid_ratio : 0.474960
+zone lifetime : 5
+invalid_ratio : 0.026474
+zone lifetime : 5
+invalid_ratio : 0.694031
+zone lifetime : 0
+invalid_ratio : 0.999985
+zone lifetime : 5
+invalid_ratio : 0.000031
+zone lifetime : 5
+invalid_ratio : 0.250735
+zone lifetime : 5
+invalid_ratio : 0.000026
+zone lifetime : 5
+invalid_ratio : 0.509989
+zone lifetime : 5
+invalid_ratio : 0.051743
+zone lifetime : 5
+invalid_ratio : 0.239304
+zone lifetime : 5
+invalid_ratio : 0.325989
+zone lifetime : 5
+invalid_ratio : 0.259262
+zone lifetime : 5
+invalid_ratio : 0.118744
+zone lifetime : 5
+invalid_ratio : 0.250717
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 5
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.749293
+zone lifetime : 4
+invalid_ratio : 0.808757
+zone lifetime : 4
+invalid_ratio : 0.746435
+zone lifetime : 4
+invalid_ratio : 0.339041
+zone lifetime : 4
+invalid_ratio : 0.428602
+zone lifetime : 4
+invalid_ratio : 0.311642
+zone lifetime : 4
+invalid_ratio : 0.496180
+zone lifetime : 4
+invalid_ratio : 0.131496
+zone lifetime : 4
+invalid_ratio : 0.000032
+zone lifetime : 4
+invalid_ratio : 0.002350
+zone lifetime : 4
+invalid_ratio : 0.000038
+zone lifetime : 4
+invalid_ratio : 0.044462
+zone lifetime : 4
+invalid_ratio : 0.000031
+zone lifetime : 4
+invalid_ratio : 0.000043
+zone lifetime : 4
+invalid_ratio : 0.031664
+zone lifetime : 4
+invalid_ratio : 0.126453
+zone lifetime : 4
+invalid_ratio : 0.344124
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.920746
+zone lifetime : 4
+invalid_ratio : 0.000000
+zone lifetime : 4
+invalid_ratio : 0.439835
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.285865
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.446182
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 0.749283
+zone lifetime : 4
+invalid_ratio : 1.000000
+zone lifetime : 0
+invalid_ratio : 0.999516
+Total Copied Data in GC : 21692252160
+**********TOTAL WRITTEN DATA AMOUNT TO DEVICE : 129196785664**********

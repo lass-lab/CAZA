@@ -4,8 +4,6 @@ tags
 
 *.d
 
-ttest.sh
-
 blkzone
 
 zenfs

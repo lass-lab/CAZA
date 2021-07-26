@@ -42,12 +42,14 @@ struct ZoneExtentInfo {
     ZoneExtent* extent_;
     ZoneFile* zone_file_;
     bool valid_;
-    
-    ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file ,bool valid) 
-        : extent_(extent), zone_file_(zone_file), valid_(valid){};
+    uint32_t length_;
+
+    ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint32_t length) 
+        : extent_(extent), zone_file_(zone_file), valid_(valid), length_(length) {};
     
     void invalidate() {
-//        assert(valid_);
+        assert(extent_ != nullptr);
+        assert(valid_);
         valid_ = false;
     };
 };
@@ -109,6 +111,9 @@ class Zone {
   void Invalidate(ZoneExtent* extent) {
     for(auto ex : extent_info_) {
         if (ex->extent_ == extent) {
+            if(extent == nullptr){
+                fprintf(stderr, "Try to innvalidate extent which is nullptr!\n");
+            }
             ex->invalidate();
         }
     }
@@ -126,7 +131,6 @@ class ZonedBlockDevice {
   std::vector<Zone *> io_zones;
   std::mutex io_zones_mtx;
 
-//  std::mutex zone_cleaning_mtx;
   std::vector<Zone *> meta_zones;
   std::vector<Zone *> reserved_zones; // reserved for a Zone Cleaning
   int read_f_;
@@ -148,10 +152,14 @@ class ZonedBlockDevice {
   std::mutex zone_cleaning_mtx;
   std::vector<ZoneFile *> del_pending;
   std::atomic<bool> zc_in_progress_;
+  std::mutex append_mtx_;
+
+  unsigned long long WR_DATA;
+
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
   virtual ~ZonedBlockDevice();
-
+  
   void printZoneStatus(const std::vector<Zone *>);
 
   IOStatus Open(bool readonly = false);

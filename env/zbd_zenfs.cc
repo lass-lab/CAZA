@@ -9,6 +9,7 @@
 #include "zbd_zenfs.h"
 #include "exp.h"
 
+#include <stdlib.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -66,7 +67,7 @@ uint64_t Zone::GetZoneNr() { return start_ / zbd_->GetZoneSize(); }
 
 void Zone::CloseWR() {
 
-//  assert(open_for_write_);
+  assert(open_for_write_);
   open_for_write_ = false;
   if (Close().ok()) {
     zbd_->NotifyIOZoneClosed();
@@ -97,7 +98,10 @@ IOStatus Zone::Reset() {
 
   wp_ = start_;
   lifetime_ = Env::WLTH_NOT_SET;
-
+  for(auto ext : extent_info_){
+    delete ext;
+  }
+  extent_info_.clear();
   return IOStatus::OK();
 }
 
@@ -171,6 +175,7 @@ ZonedBlockDevice::ZonedBlockDevice(std::string bdevname,
     : filename_("/dev/" + bdevname), logger_(logger) {
   Info(logger_, "New Zoned Block Device: %s", filename_.c_str());
   zc_in_progress_.store(false);
+  WR_DATA = 0;
 };
 
 IOStatus ZonedBlockDevice::Open(bool readonly) {
@@ -253,7 +258,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly) {
   }
  
   //(TODO)::Should reserved zone be treated as active_io_zones_?
-  while(r < RESERVED_ZONE_FOR_CLEANING && i < reported_zones) {
+  while(r <= RESERVED_ZONE_FOR_CLEANING && i < reported_zones) {
     struct zbd_zone *z = &zone_rep[i++];
     /* Only use sequential write required zones */
     if (zbd_zone_type(z) == ZBD_ZONE_TYPE_SWR) {
@@ -367,6 +372,9 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   zbd_close(read_f_);
   zbd_close(read_direct_f_);
   zbd_close(write_f_);
+#ifdef EXPERIMENT
+  fprintf(stdout, "**********TOTAL WRITTEN DATA AMOUNT TO DEVICE : %llu**********\n", WR_DATA);
+#endif 
 }
 
 #define LIFETIME_DIFF_NOT_GOOD (100)
@@ -522,13 +530,24 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
           allocated_zone->lifetime_, file_lifetime);
   }
 
-
   if(!allocated_zone) {
   //Trigger GC for reclaim free space in the Device.
   //(Step 1) Classify all active zones by its invalid data ratio.
+#ifdef EXPERIMENT
+        fprintf(stdout, "********** GC triggered count : %d**********\n", ++num_zc_cnt);
+#endif
     for (auto z : io_zones) {
-        
-        double invalid_ratio = (double)(z->used_capacity_)/(double)(z->max_capacity_);
+        double valid_extent_length = 0.0;
+        for(auto ext_info: z->extent_info_) {
+            if(ext_info->valid_) {
+                valid_extent_length += (double)ext_info->length_;
+            }
+        }
+        double invalid_ratio =((double)1.00 - (double)(valid_extent_length)/(double)(z->max_capacity_));
+#ifdef EXPERIMENT
+        fprintf(stdout, "zone lifetime : %d\n", z->lifetime_);
+        fprintf(stdout, "invalid_ratio : %lf\n", invalid_ratio);
+#endif 
         //Insert into queue with sorting by its invalid ratio. 
         //Higher the invalid ratio, Higher the priority.
         gc_queue_.push(new GCVictimZone(z, invalid_ratio));
@@ -570,15 +589,16 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
     }
   }
 
-  if(!allocated_zone){
-    fprintf(stderr, "***************Zone Allocation Failed While ZC***************\n");
-    printZoneStatus(io_zones);
-    exit(-1);
-  }
-
   io_zones_mtx.unlock();
   LogZoneStats();
-  assert(allocated_zone); 
+//  assert(allocated_zone); 
+  if(!allocated_zone){
+    append_mtx_.lock();
+    fprintf(stderr, "Allocate Zone Failed!\n");
+    fprintf(stdout, "TOTAL WRITTEN DATA AMOUNT TO DEVICE : %llu\n", WR_DATA);
+    append_mtx_.unlock();
+    exit(-1);
+  }
   return allocated_zone;
 }
 
@@ -628,11 +648,9 @@ Zone *ZonedBlockDevice::AllocateZoneForCleaning(std::vector<Zone *>& new_io_zone
           break;
         }
       }
-    }else {
-        fprintf(stderr, "Failed Allocate while GC due to active_io_zone_capacity\n");
-        exit(1);
     }
   }
+
   if (allocated_zone) {
 
     assert(!allocated_zone->open_for_write_);
@@ -642,13 +660,7 @@ Zone *ZonedBlockDevice::AllocateZoneForCleaning(std::vector<Zone *>& new_io_zone
           "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
           new_zone, allocated_zone->start_, allocated_zone->wp_,
           allocated_zone->lifetime_, lt);
-  } else if (!allocated_zone){
-    fprintf(stderr, "AllocateZoneFor ZC! Fail to Find!\n");
-    fprintf(stderr, "***************Zone Allocation Failed While ZC***************\n");
-    printZoneStatus(new_io_zones);
-    exit(-1);
   }
-  assert(allocated_zone);
   return allocated_zone;
 }
 
@@ -695,6 +707,8 @@ void ZonedBlockDevice::printZoneStatus(const std::vector<Zone *> zones){
 */
 int ZonedBlockDevice::ZoneCleaning() {
    
+
+    fprintf(stderr, "ZoneCleaning Start!\n");
     assert(zc_in_progress_.load() == false);
 
     zone_cleaning_mtx.lock();
@@ -702,9 +716,10 @@ int ZonedBlockDevice::ZoneCleaning() {
 
     size_t prev_io_zone_cnt = io_zones.size();
     size_t prev_reserved_zone_cnt = reserved_zones.size();
+    uint64_t copied_data = 0;
 
     std::vector<Zone *> new_io_zones = reserved_zones;
-
+    fprintf(stderr, "number of reserved_zones :%zu\n", new_io_zones.size());
     for(Zone * nz : new_io_zones){
         nz->Reset();
     }
@@ -712,40 +727,39 @@ int ZonedBlockDevice::ZoneCleaning() {
     Zone* allocated_zone = nullptr;
     
     while(!gc_queue_.empty()){
-       
+
         //Process until every invalid data gets cleaned from zone.
         Zone* cur_victim = gc_queue_.top()->get_zone_ptr();
         
+        assert(cur_victim);
+
+        double iinvalid_ratio = gc_queue_.top()->get_inval_ratio();
+        
         if(cur_victim->open_for_write_) {
             //Do not touch currently used zone
-            fprintf(stderr, "currently open zone!\n");
             used_io_zones.push_back(cur_victim);
             gc_queue_.pop();
             continue;
         }
-        
-        assert(cur_victim);
+
+        if(iinvalid_ratio == (double)0.0){
+            new_io_zones.push_back(cur_victim);
+            gc_queue_.pop();
+            continue; 
+        }
+
         //Find the valid extents in currently selected zone.
         //Should recognize which file each extent belongs to.
         std::vector<ZoneExtentInfo *> valid_extents_info;
-        long total_length = 0; 
-
-        //TODO:: reduce CS for zone mutex..
-        cur_victim->zone_mtx_.lock();
 
         for(auto exinfo : cur_victim->extent_info_){
 
             if(exinfo->valid_ == true) {
                 valid_extents_info.push_back(exinfo);
-                total_length += exinfo->extent_->length_;
             }
         }
 
-
         if(valid_extents_info.empty()){
-            std::vector<Zone*> a;
-            a.push_back(cur_victim);
-            //printZoneStatus(a);
             new_io_zones.push_back(cur_victim);
             gc_queue_.pop();
             continue;
@@ -799,7 +813,6 @@ int ZonedBlockDevice::ZoneCleaning() {
             
             //Copy contents to new zone.
             assert(allocated_zone);
-
             {
                 IOStatus s;
                 uint32_t left = content_length;
@@ -816,10 +829,13 @@ int ZonedBlockDevice::ZoneCleaning() {
 
                     //There'are enough room for write original extent
                         s = allocated_zone->Append((char*)content + offset, left);
+#ifdef EXPERIMENT
+                        copied_data += (uint64_t)left;
+#endif
                         allocated_zone->used_capacity_ += left;
 
                         ZoneExtent * new_extent = new ZoneExtent((allocated_zone->wp_ - left), /*Extent length*/left, allocated_zone);
-                        allocated_zone->PushExtentInfo(new ZoneExtentInfo(new_extent, zone_file ,true));    
+                        allocated_zone->PushExtentInfo(new ZoneExtentInfo(new_extent, zone_file ,true, left));    
                         new_zone_extents.push_back(new_extent);
                         break; /*left = 0*/
                     } 
@@ -833,8 +849,11 @@ int ZonedBlockDevice::ZoneCleaning() {
                         wr_size = allocated_zone->capacity_;
 
                         s = allocated_zone->Append((char*)content + offset, wr_size);
-                        assert(s.ok()); 
 
+                        assert(s.ok()); 
+#ifdef EXPERIMENT
+                        copied_data += (uint64_t)wr_size;
+#endif
                         allocated_zone->used_capacity_ += wr_size;
 
                         left -= wr_size;
@@ -843,7 +862,7 @@ int ZonedBlockDevice::ZoneCleaning() {
                         assert(allocated_zone->capacity_ == 0); 
 
                         ZoneExtent * new_extent = new ZoneExtent((allocated_zone->wp_ - wr_size), wr_size, allocated_zone);
-                        allocated_zone->PushExtentInfo(new ZoneExtentInfo(new_extent, zone_file ,true));    
+                        allocated_zone->PushExtentInfo(new ZoneExtentInfo(new_extent, zone_file ,true, wr_size));    
                         new_zone_extents.push_back(new_extent);
 
                         //update and notify resource status
@@ -855,7 +874,7 @@ int ZonedBlockDevice::ZoneCleaning() {
     
                         //newly allocate new zone for write
                         allocated_zone = AllocateZoneForCleaning(new_io_zones, lt);
-
+                        assert(allocated_zone);
                     }
                 }//end of while.
             
@@ -883,35 +902,29 @@ int ZonedBlockDevice::ZoneCleaning() {
         assert(!(cur_victim->open_for_write_));
         cur_victim->used_capacity_.store(0);
         cur_victim->Reset();
-        cur_victim->extent_info_.clear();
         active_io_zones_--;
         new_io_zones.push_back(cur_victim);
         gc_queue_.pop();
-        //TODO:: reduce CS for zone mutex..
-        cur_victim->zone_mtx_.unlock();
-
-        for(auto zit = used_io_zones.begin(); zit != used_io_zones.end(); zit++){
+       
+        for(auto zit = used_io_zones.begin(); zit != used_io_zones.end();){
             if((*zit)->open_for_write_ == false){
-                double invalid_ratio = (double)((*zit)->used_capacity_)/(double)((*zit)->max_capacity_);
+                double invalid_ratio = ((double)1.00 - (double)((*zit)->used_capacity_)/(double)((*zit)->max_capacity_));
                 //Insert into queue with sorting by its invalid ratio. 
                 //Higher the invalid ratio, Higher the priority.
                 gc_queue_.push(new GCVictimZone((*zit), invalid_ratio));
                 used_io_zones.erase(zit);
+            }else{
+                zit++;
             }
         }
     }
-
     std::vector<Zone *> new_reserved_io_zones;
     
     int cnt = 0;
     bool is_picked;
 
     for(auto nz : new_io_zones) {
-        is_picked = false;
-        for(auto zz : new_reserved_io_zones){
-            if(nz == zz) is_picked = true;
-        } 
-        if( !is_picked && cnt < 6 && nz->IsEmpty() && !(nz->IsUsed())) {
+        if( cnt <= RESERVED_ZONE_FOR_CLEANING && nz->IsEmpty() && !(nz->IsUsed())) {
             new_reserved_io_zones.push_back(nz);
             cnt++;
         } 
@@ -919,7 +932,6 @@ int ZonedBlockDevice::ZoneCleaning() {
     io_zones.clear();
     for(auto z : new_io_zones){
         is_picked = false;
-        
         for(auto rz : new_reserved_io_zones) {
             if( z == rz) {
                 is_picked = true;
@@ -929,7 +941,6 @@ int ZonedBlockDevice::ZoneCleaning() {
         if(!is_picked)
             io_zones.push_back(z);
     }
-
     for(auto uz : used_io_zones){
         io_zones.push_back(uz);
     }
@@ -937,13 +948,13 @@ int ZonedBlockDevice::ZoneCleaning() {
     reserved_zones.clear();
     reserved_zones = new_reserved_io_zones;
 
-    if((prev_io_zone_cnt + prev_reserved_zone_cnt) != (io_zones.size() + reserved_zones.size())) { 
-        fprintf(stderr, "Total IO count differen!\n");
-        fprintf(stderr, "(prev_io_zone_cnt + prev_reserved_zone_cnt) : %zu != (io_zones.size() + reserved_zones.size()) : %zu", (prev_io_zone_cnt + prev_reserved_zone_cnt), (io_zones.size() + reserved_zones.size()));
-    } 
-
+    assert((prev_io_zone_cnt + prev_reserved_zone_cnt) == (io_zones.size() + reserved_zones.size()));
     zc_in_progress_.store(false);
     zone_cleaning_mtx.unlock();
+#ifdef EXPERIMENT
+    fprintf(stdout, "Total Copied Data in GC : %lu\n", copied_data);
+#endif
+    fprintf(stderr, "ZoneCleaning End!\n");
     return 1;
 }
 

@@ -39,6 +39,8 @@
 #include "test_util/sync_point.h"
 #include "util/stop_watch.h"
 
+#include "env/exp.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 class TableFactory;
@@ -155,7 +157,6 @@ Status BuildTable(
           std::move(file), fname, file_options, env, io_tracer,
           ioptions.statistics, ioptions.listeners,
           ioptions.file_checksum_gen_factory));
-
       builder = NewTableBuilder(
           ioptions, mutable_cf_options, internal_comparator,
           int_tbl_prop_collector_factories, column_family_id,

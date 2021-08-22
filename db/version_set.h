@@ -763,6 +763,10 @@ class Version {
 
   const MutableCFOptions& GetMutableCFOptions() { return mutable_cf_options_; }
 
+  //Used only for ZenFS experiment
+  const Comparator* User_comparator() const {
+      return storage_info_.user_comparator_;
+  }
  private:
   Env* env_;
   friend class ReactiveVersionSet;

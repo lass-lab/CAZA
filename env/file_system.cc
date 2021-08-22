@@ -26,6 +26,10 @@ Status FileSystem::Load(const std::string& value,
   return s;
 }
 
+void FileSystem::SetDBPointer(DBImpl* db){
+    db_ptr_ = db;
+}
+
 IOStatus FileSystem::ReuseWritableFile(const std::string& fname,
                                        const std::string& old_fname,
                                        const FileOptions& opts,

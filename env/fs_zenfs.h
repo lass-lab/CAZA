@@ -12,9 +12,11 @@
 #include "rocksdb/file_system.h"
 #include "rocksdb/status.h"
 #include "util/coding.h"
+#include "db/db_impl/db_impl.h"
 
 namespace ROCKSDB_NAMESPACE {
 
+class DBImpl;
 #if !defined(ROCKSDB_LITE) && defined(OS_LINUX) && defined(LIBZBD)
 
 class Superblock {
@@ -164,6 +166,8 @@ class ZenFS : public FileSystemWrapper {
   std::shared_ptr<Logger> logger_;
   std::atomic<uint64_t> next_file_id_;
 
+  DBImpl* db_ptr_;
+
   Zone* cur_meta_zone_ = nullptr;
   std::unique_ptr<ZenMetaLog> meta_log_;
   std::mutex metadata_sync_mtx_;
@@ -188,6 +192,8 @@ class ZenFS : public FileSystemWrapper {
     kFileDeletion = 3,
     kEndRecord = 4,
   };
+
+  void SetDBPointer(DBImpl* db);
 
   void LogFiles();
   void ClearFiles();

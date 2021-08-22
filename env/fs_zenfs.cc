@@ -158,6 +158,11 @@ ZenFS::~ZenFS() {
   delete zbd_;
 }
 
+void ZenFS::SetDBPointer(DBImpl* db){
+    db_ptr_ = db;
+    zbd_->SetDBPointer(db);
+}
+
 void ZenFS::LogFiles() {
   std::map<std::string, ZoneFile*>::iterator it;
   uint64_t total_size = 0;

@@ -26,11 +26,13 @@
 
 #include <iostream>
 
+#include "db/db_impl/db_impl.h"
 #include "rocksdb/env.h"
 #include "rocksdb/io_status.h"
 
 namespace ROCKSDB_NAMESPACE {
 
+class DBImpl;
 class Zone;
 class ZoneFile;
 class ZonedBlockDevice;
@@ -42,14 +44,18 @@ struct ZoneExtentInfo {
     ZoneExtent* extent_;
     ZoneFile* zone_file_;
     bool valid_;
-    uint32_t length_;
+    uint64_t length_;
+    std::string fname_;
 
-    ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint32_t length) 
-        : extent_(extent), zone_file_(zone_file), valid_(valid), length_(length) {};
+    explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint64_t length, std::string fname) 
+        : extent_(extent), zone_file_(zone_file), valid_(valid), length_(length), fname_(fname) {
+        };
     
     void invalidate() {
         assert(extent_ != nullptr);
-        assert(valid_);
+        if(!valid_){
+            fprintf(stderr, "Try to invalidate invalid extent!\n");
+        }       
         valid_ = false;
     };
 };
@@ -57,22 +63,22 @@ struct ZoneExtentInfo {
 class GCVictimZone {
     public:
 
-     GCVictimZone(Zone* zone, double invalid_ratio)
+     GCVictimZone(Zone* zone, uint64_t invalid_bytes)
          : zone_(zone),
-           invalid_ratio_(invalid_ratio){};
+           invalid_bytes_(invalid_bytes){};
 
-     double get_inval_ratio() const {return invalid_ratio_;};
+     uint64_t get_inval_bytes() const {return invalid_bytes_;};
      Zone * get_zone_ptr() const {return zone_;};
 
     private:
      Zone *zone_;
-     double invalid_ratio_;
+     uint64_t invalid_bytes_;
 };
 
 class InvalComp{
     public:
         bool operator()(const GCVictimZone *a, const GCVictimZone* b){
-            return a->get_inval_ratio() < b->get_inval_ratio();
+            return a->get_inval_bytes() < b->get_inval_bytes();
         };
 };
 
@@ -104,21 +110,30 @@ class Zone {
   //list of extents lives in here.
   std::vector<ZoneExtentInfo *> extent_info_;
   void CloseWR(); /* Done writing */
+  
   void PushExtentInfo(ZoneExtentInfo* extent_info) { 
     extent_info_.push_back(extent_info);
   };
-  
+    
   void Invalidate(ZoneExtent* extent) {
+    bool found = false;
     for(auto ex : extent_info_) {
         if (ex->extent_ == extent) {
+            if(found){
+                fprintf(stderr, "Duplicate Extent in Invalidate\n");
+            }
             if(extent == nullptr){
-                fprintf(stderr, "Try to innvalidate extent which is nullptr!\n");
+                fprintf(stderr, "Try to invalidate extent which is nullptr!\n");
             }
             ex->invalidate();
+            found = true;
         }
     }
-  };
 
+    if (!found ){
+       fprintf(stderr, "Failed to Find extent in the zone\n");
+    }
+  };
 };
 
 class ZonedBlockDevice {
@@ -147,27 +162,30 @@ class ZonedBlockDevice {
 
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
- 
  public:
+  std::atomic<int> append_cnt;
+  int num_zc_cnt;
+  DBImpl* db_ptr_;
+  void SetDBPointer(DBImpl* db);
   std::mutex zone_cleaning_mtx;
   std::vector<ZoneFile *> del_pending;
   std::atomic<bool> zc_in_progress_;
   std::mutex append_mtx_;
 
-  unsigned long long WR_DATA;
+  std::atomic<unsigned long long> WR_DATA;
 
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
   virtual ~ZonedBlockDevice();
   
-  void printZoneStatus(const std::vector<Zone *>);
+  void printZoneStatus(const std::vector<Zone *>&);
 
   IOStatus Open(bool readonly = false);
 
   Zone *GetIOZone(uint64_t offset);
 
   Zone *AllocateZone(Env::WriteLifeTimeHint lifetime);
-  Zone *AllocateZoneForCleaning(std::vector<Zone *>& new_io_zones, Env::WriteLifeTimeHint lifetime);
+  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones, Env::WriteLifeTimeHint lifetime);
   Zone *AllocateMetaZone();
 
   uint64_t GetFreeSpace();
@@ -192,6 +210,8 @@ class ZonedBlockDevice {
   void NotifyIOZoneClosed();
 
   int ZoneCleaning();
+  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&);
+
 };
 
 }  // namespace ROCKSDB_NAMESPACE

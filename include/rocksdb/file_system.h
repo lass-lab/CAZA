@@ -44,6 +44,8 @@ struct ImmutableDBOptions;
 struct MutableDBOptions;
 class RateLimiter;
 
+class DBImpl;
+
 using AccessPattern = RandomAccessFile::AccessPattern;
 using FileAttributes = Env::FileAttributes;
 
@@ -156,11 +158,14 @@ struct IODebugContext {
 // retryable.
 class FileSystem {
  public:
+
+  DBImpl* db_ptr_;
   FileSystem();
 
   // No copying allowed
   FileSystem(const FileSystem&) = delete;
 
+  virtual void SetDBPointer(DBImpl* db);
   virtual ~FileSystem();
 
   virtual const char* Name() const = 0;
@@ -729,7 +734,7 @@ class FSWritableFile {
         strict_bytes_per_sync_(options.strict_bytes_per_sync) {}
 
   virtual ~FSWritableFile() {}
-
+  
   // Append data to the end of the file
   // Note: A WriteabelFile object must support either Append or
   // PositionedAppend, so the users cannot mix the two.
@@ -1310,7 +1315,6 @@ class FSWritableFileWrapper : public FSWritableFile {
   explicit FSWritableFileWrapper(FSWritableFile* t) : target_(t) {}
 
   FSWritableFile* target() const { return target_; }
-
   IOStatus Append(const Slice& data, const IOOptions& options,
                   IODebugContext* dbg) override {
     return target_->Append(data, options, dbg);

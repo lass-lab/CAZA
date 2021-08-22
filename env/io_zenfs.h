@@ -90,6 +90,7 @@ class ZoneFile {
   void UpdateExtents(std::vector<ZoneExtent*>& a){extents_ = a; };
   uint64_t GetID() { return file_id_; }
   size_t GetUniqueId(char* id, size_t max_size);
+
 };
 
 class ZonedWritableFile : public FSWritableFile {
@@ -105,7 +106,7 @@ class ZonedWritableFile : public FSWritableFile {
                              ZoneFile* zoneFile,
                              MetadataWriter* metadata_writer = nullptr);
   virtual ~ZonedWritableFile();
-
+  
   virtual IOStatus Append(const Slice& data, const IOOptions& options,
                           IODebugContext* dbg) override;
   virtual IOStatus Append(const Slice& data, const IOOptions& opts,

@@ -1392,7 +1392,8 @@ size_t PosixWritableFile::GetUniqueId(char* id, size_t max_size) const {
 
 PosixRandomRWFile::PosixRandomRWFile(const std::string& fname, int fd,
                                      const EnvOptions& /*options*/)
-    : filename_(fname), fd_(fd) {}
+    : filename_(fname), fd_(fd) {
+    }
 
 PosixRandomRWFile::~PosixRandomRWFile() {
   if (fd_ >= 0) {

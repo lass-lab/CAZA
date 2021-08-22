@@ -234,7 +234,6 @@ class PosixWritableFile : public FSWritableFile {
                              size_t logical_block_size,
                              const EnvOptions& options);
   virtual ~PosixWritableFile();
-
   // Need to implement this so the file is truncated correctly
   // with direct I/O
   virtual IOStatus Truncate(uint64_t size, const IOOptions& opts,
@@ -332,7 +331,6 @@ class PosixMmapFile : public FSWritableFile {
   PosixMmapFile(const std::string& fname, int fd, size_t page_size,
                 const EnvOptions& options);
   ~PosixMmapFile();
-
   // Means Close() will properly take care of truncate
   // and it does not need any additional information
   virtual IOStatus Truncate(uint64_t /*size*/, const IOOptions& /*opts*/,

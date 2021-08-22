@@ -24,6 +24,10 @@
 #include <utility>
 #include <vector>
 
+#include <mutex>
+#include <shared_mutex>
+#include <fstream>
+
 #include "db/arena_wrapped_db_iter.h"
 #include "db/builder.h"
 #include "db/compaction/compaction_job.h"
@@ -237,7 +241,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   assert(batch_per_txn_ || seq_per_batch_);
   // TODO: Check for an error here
   env_->GetAbsolutePath(dbname, &db_absolute_path_).PermitUncheckedError();
-
+  fs_->SetDBPointer(this);
   // Reserve ten files or so for other uses and give the rest to TableCache.
   // Give a large number for setting of "infinite" open files.
   const int table_cache_size = (mutable_db_options_.max_open_files == -1)
@@ -267,6 +271,38 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
+}
+
+void DBImpl::printCompactionHistory(){
+    
+    std::ofstream outfile;
+    outfile.open("compactions.txt");
+    
+    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
+        outfile << "job_id : " <<it->first << std::endl;
+        outfile << "num_files : "<<it->second.size() << std::endl;
+        for(auto num : it->second){
+            outfile << num << std::endl;
+        }
+    }
+}
+//Only used for ZenFS Experiment
+void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<CompactionInputFiles>* inputs){
+    
+    std::vector<uint64_t> file_nums;
+    int id = job_id;
+    for(const CompactionInputFiles cif : (*inputs)) {
+        for (const FileMetaData* fmeta : cif.files){
+            uint64_t fno = fmeta->fd.GetNumber();
+            file_nums.push_back(fno);
+        }
+    }
+    assert(!file_nums.empty());
+    assert(compaction_inputs_.find(job_id) == compaction_inputs_.end());
+    
+    compaction_input_mutex_.lock();
+    compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
+    compaction_input_mutex_.unlock();
 }
 
 Status DBImpl::Resume() {
@@ -658,6 +694,7 @@ DBImpl::~DBImpl() {
     closed_ = true;
     CloseHelper().PermitUncheckedError();
   }
+  printCompactionHistory();
 }
 
 void DBImpl::MaybeIgnoreError(Status* s) const {

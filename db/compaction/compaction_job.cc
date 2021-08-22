@@ -65,6 +65,8 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 
+#include "env/exp.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 const char* GetCompactionReasonString(CompactionReason compaction_reason) {
@@ -1457,7 +1459,6 @@ Status CompactionJob::FinishCompactionOutputFile(
   }
   sub_compact->current_output()->finished = true;
   sub_compact->total_bytes += current_bytes;
-
   // Finish and check for file errors
   if (s.ok()) {
     StopWatch sw(env_, stats_, COMPACTION_OUTFILE_SYNC_MICROS);
@@ -1483,6 +1484,7 @@ Status CompactionJob::FinishCompactionOutputFile(
     // "normal" status, it does not also need to be checked
     sub_compact->io_status.PermitUncheckedError();
   }
+
   sub_compact->outfile.reset();
 
   TableProperties tp;

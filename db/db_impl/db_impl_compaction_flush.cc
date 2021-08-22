@@ -209,7 +209,6 @@ Status DBImpl::FlushMemTableToOutputFile(
   if (io_s.ok()) {
     io_s = flush_job.io_status();
   }
-
   if (s.ok()) {
     InstallSuperVersionAndScheduleWork(cfd, superversion_context,
                                        mutable_cf_options);
@@ -973,6 +972,7 @@ Status DBImpl::CompactFiles(const CompactionOptions& compact_options,
                             const int output_level, const int output_path_id,
                             std::vector<std::string>* const output_file_names,
                             CompactionJobInfo* compaction_job_info) {
+
 #ifdef ROCKSDB_LITE
   (void)compact_options;
   (void)column_family;
@@ -2972,6 +2972,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     TEST_SYNC_POINT_CALLBACK(
         "DBImpl::BackgroundCompaction:NonTrivial:BeforeRun", nullptr);
     // Should handle erorr?
+    InsertCompactionFileList(job_context->job_id, c.get()->inputs());
     compaction_job.Run().PermitUncheckedError();
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:NonTrivial:AfterRun");
     mutex_.Lock();

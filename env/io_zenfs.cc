@@ -114,6 +114,8 @@ Status ZoneFile::DecodeFrom(Slice* input) {
           return Status::Corruption("ZoneFile", "Invalid zone extent");
         extent->zone_->used_capacity_ += extent->length_;
         extents_.push_back(extent);
+        fprintf(stderr, "Push Extent info in ZoneFile::DecodeFrom\n");
+        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_, filename_));
         break;
       default:
         return Status::Corruption("ZoneFile", "Unexpected tag");
@@ -125,6 +127,7 @@ Status ZoneFile::DecodeFrom(Slice* input) {
 }
 
 Status ZoneFile::MergeUpdate(ZoneFile* update) {
+  
   if (file_id_ != update->GetID())
     return Status::Corruption("ZoneFile update", "ID missmatch");
 
@@ -132,12 +135,18 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
   SetFileSize(update->GetFileSize());
 
   std::vector<ZoneExtent*> update_extents = update->GetExtents();
+  
   for (long unsigned int i = 0; i < update_extents.size(); i++) {
     ZoneExtent* extent = update_extents[i];
     Zone* zone = extent->zone_;
     zone->used_capacity_ += extent->length_;
     ZoneExtent* new_extent = new ZoneExtent(extent->start_,extent->length_, zone);
+
     extents_.push_back(new_extent);
+    fprintf(stderr, "Push Extent info in ZoneFile::MergeUpdate\n");
+    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, filename_);
+    zone->PushExtentInfo(new_extent_info);
+
   }
 
   MetadataSynced();
@@ -154,7 +163,7 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       fileSize(0),
       filename_(filename),
       file_id_(file_id),
-      nr_synced_extents_(0) {marked_for_del.store(false);}
+      nr_synced_extents_(0) {}
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -164,9 +173,8 @@ uint64_t ZoneFile::GetFileSize() { return fileSize; }
 void ZoneFile::SetFileSize(uint64_t sz) { fileSize = sz; }
 
 ZoneFile::~ZoneFile() {
-
+  
   zbd_->zone_cleaning_mtx.lock();
-  marked_for_del.store(true);
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
    
     Zone* zone = (*e)->zone_;
@@ -174,14 +182,11 @@ ZoneFile::~ZoneFile() {
     assert(zone);
     assert(zone->used_capacity_.load() >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
-    //(ZC) invalidate.
-    //Invalidate() function find specified extent in the zone and 
-    //Set ZoneExtentInfo as false
+    
     zone->Invalidate(*e);
     delete *e;
   }
   CloseWR();
-  marked_for_del.store(false);
   zbd_->zone_cleaning_mtx.unlock();
 
 }
@@ -290,19 +295,21 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
 
 void ZoneFile::PushExtent() {
   uint64_t length;
-
   assert(fileSize >= extent_filepos_);
 
   if (!active_zone_) return;
-
+  //(ZC)::Extent length could be less than exactly data size written zone.
+  //This is because block size alignment.
   length = fileSize - extent_filepos_;
-  if (length == 0) return;
+  if (length == 0){
+      return;  
+  }
 
   assert(length <= (active_zone_->wp_ - extent_start_));
   ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
-  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length));
+  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, filename_));
 
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
@@ -311,7 +318,7 @@ void ZoneFile::PushExtent() {
 
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
-    
+
   uint32_t left = data_size;
   uint32_t wr_size, offset = 0;
   IOStatus s;
@@ -344,11 +351,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     wr_size = left;
     if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
     s = active_zone_->Append((char*)data + offset, wr_size);
-    
-    zbd_->append_mtx_.lock();
-    zbd_->WR_DATA += (unsigned long long)wr_size;
-    zbd_->append_mtx_.unlock();
-    
+
     if (!s.ok()){ 
         return s;
     }
@@ -357,8 +360,6 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     left -= wr_size;
     offset += wr_size;
   }
-  //ZC : Add to extent list for Zone Cleaning
-  //code section below works as PushExtent()
   
   fileSize -= (data_size - valid_size);
   return IOStatus::OK();

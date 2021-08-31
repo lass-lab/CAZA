@@ -163,6 +163,57 @@ void ZenFS::SetDBPointer(DBImpl* db){
     zbd_->SetDBPointer(db);
 }
 
+int ZenFS::GetZonedFileExtentNum(const uint64_t fileno){
+    zbd_->zone_cleaning_mtx.lock();
+    std::map<std::string, ZoneFile*>::iterator it;
+    //TODO::Wait until current file append or ZC is done.
+    for (it = files_.begin(); it != files_.end(); it++) {
+        ZoneFile* zFile = it->second;
+        std::string fname = zFile->GetFilename();
+        std::string fname_wo_path = fname.substr(fname.size() - 10);
+        std::string fno = fname_wo_path.substr(0, 6);
+
+        if((uint64_t)(std::stoul(fno)) == fileno){
+            while(zFile->is_appending_.load() == true) { } 
+            
+            zbd_->zone_cleaning_mtx.unlock();
+            return zFile->GetExtents().size();
+        }
+    }
+    zbd_->zone_cleaning_mtx.unlock();
+    return -1;
+}
+
+void ZenFS::GetExtentInfo(const uint64_t fileno, const int ext_no, int& zone_id, uint32_t& extent_length, uint32_t& extent_start) {
+    zbd_->zone_cleaning_mtx.lock();
+    std::map<std::string, ZoneFile*>::iterator it;
+    for (it = files_.begin(); it != files_.end(); it++) {
+        ZoneFile* zFile = it->second;
+        std::string fname = zFile->GetFilename();
+        std::string fname_wo_path = fname.substr(fname.size() - 10);
+        std::string fno = fname_wo_path.substr(0, 6);
+        
+        if((uint64_t)(std::stoul(fno)) == fileno){
+
+            while(zFile->is_appending_.load() == true) { }       
+            
+            auto extents = zFile->GetExtents();
+            for(size_t i = 0; i < extents.size(); i++){
+                if(i == (size_t)ext_no){
+                    auto cur_extent = extents[i];  
+                    zone_id = cur_extent->zone_->zone_id_;
+                    extent_length = cur_extent->length_;
+                    extent_start = cur_extent->start_;
+                    zbd_->zone_cleaning_mtx.unlock();
+                    return;
+                }
+            }
+
+        }
+    }
+    zbd_->zone_cleaning_mtx.unlock();
+} 
+
 void ZenFS::LogFiles() {
   std::map<std::string, ZoneFile*>::iterator it;
   uint64_t total_size = 0;

@@ -166,6 +166,9 @@ class FileSystem {
   FileSystem(const FileSystem&) = delete;
 
   virtual void SetDBPointer(DBImpl* db);
+  virtual int GetZonedFileExtentNum(const uint64_t);
+  virtual void GetExtentInfo(const uint64_t, const int, int&, uint32_t&, uint32_t&);
+
   virtual ~FileSystem();
 
   virtual const char* Name() const = 0;

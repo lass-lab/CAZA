@@ -86,14 +86,16 @@ class Zone {
   ZonedBlockDevice *zbd_;
 
  public:
-  explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z);
+  explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z, const uint32_t id);
 
   std::mutex zone_mtx_;
+  const uint32_t zone_id_; /* increment from 0 */
   uint64_t start_;
   uint64_t capacity_; /* remaining capacity */
   uint64_t max_capacity_;
   uint64_t wp_;
   bool open_for_write_;
+  std::atomic<bool> is_append; /*hold when append*/
   Env::WriteLifeTimeHint lifetime_;
   std::atomic<long> used_capacity_;
 

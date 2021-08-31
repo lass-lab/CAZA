@@ -271,8 +271,9 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
+  lsm_ofile.open("lsm_state.txt");
 }
-
+//Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
     
     std::ofstream outfile;
@@ -303,6 +304,32 @@ void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<Compa
     compaction_input_mutex_.lock();
     compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
     compaction_input_mutex_.unlock();
+}
+//Only used for ZenFS Experiment
+void DBImpl::LogLSMStateHistoryWithZoneState() {
+    lsm_ofile_mutex_.lock();
+    auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+    lsm_ofile<< "LSM_STATE"<<std::endl;
+    for(int i = 0; i < vstorage->num_levels(); i++) {
+        for(const auto* f : vstorage->LevelFiles(i)) {
+  
+            uint64_t fileno = f->fd.GetNumber();
+            int num_of_ext = fs_->GetZonedFileExtentNum(fileno);
+            assert(num_of_ext != -1);
+            
+            lsm_ofile << fileno <<","<<i<<","<<num_of_ext<<",";
+            for(int ext_no = 0; ext_no < num_of_ext; ext_no++){
+                int zone_id;
+                uint32_t extent_length;
+                uint32_t extent_start;
+                fs_->GetExtentInfo(fileno, ext_no, zone_id, extent_length, extent_start);
+                lsm_ofile << zone_id <<","<<extent_start<<","<<extent_length;
+            }
+            lsm_ofile<<std::endl;
+        }
+    }
+
+    lsm_ofile_mutex_.unlock();
 }
 
 Status DBImpl::Resume() {
@@ -695,6 +722,7 @@ DBImpl::~DBImpl() {
     CloseHelper().PermitUncheckedError();
   }
   printCompactionHistory();
+  CloseLSMHistoryFile();  
 }
 
 void DBImpl::MaybeIgnoreError(Status* s) const {

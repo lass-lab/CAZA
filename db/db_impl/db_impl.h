@@ -22,7 +22,6 @@
 #include <iostream>
 
 #include <mutex>
-#include <shared_mutex>
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_job.h"
@@ -146,9 +145,18 @@ class DBImpl : public DB {
   
   //Only Used for ZenFS Experiment
   std::mutex compaction_input_mutex_;
+  std::ofstream lsm_ofile;
+  std::mutex lsm_ofile_mutex_;
+
   std::map<int, std::vector<uint64_t>> compaction_inputs_;
   void printCompactionHistory();
   void InsertCompactionFileList(const int &job_id, const std::vector<CompactionInputFiles> *inputs);
+  void LogLSMStateHistoryWithZoneState();
+  void CloseLSMHistoryFile() { 
+    lsm_ofile_mutex_.lock();
+    lsm_ofile.close();
+    lsm_ofile_mutex_.unlock();
+  }
   //Only Used for ZenFS Experiment
   const Comparator* GetUserComp(){
   //Only Used for ZenFS Experiment

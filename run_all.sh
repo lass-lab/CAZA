@@ -44,11 +44,12 @@ echo deadline > /sys/class/block/$DEV/queue/scheduler
 
 ./zenfs mkfs --zbd=$DEV --aux_path=/tmp/zenfs_$DEV --finish_threshold=$FUZZ --force
 
-./db_bench --fs_uri=zenfs://dev:$DEV --key_size=16 --value_size=4096 --num=10444960 --use_direct_io_for_flush_and_compaction --max_background_jobs=$(nproc) --benchmarks="fillseq" --compression_ratio=1 --disable_wal=true > ~/EXP_RES/RAW/${ZONE_SZ}.txt
+# 80GB RAW SIZE
+./db_bench --fs_uri=zenfs://dev:$DEV --key_size=16 --value_size=4096 --num=20889920 --use_direct_io_for_flush_and_compaction --max_background_compactions=1 -max_background_flushes=1 --benchmarks="fillrandom" --compression_ratio=1 --disable_wal=true > ~/EXP_RES/RAW/${ZONE_SZ}.txt
 
 mv compactions.txt ~/EXP_RES/RAW/${ZONE_SZ}_CompactionTable.txt
-
-python3 ./scripts/zone_info_parser.py ~/EXP_RES/RAW/${ZONE_SZ}.txt ~/EXP_RES/RAW/${ZONE_SZ}_CompactionTable.txt ~/EXP_RES/CSV/${ZONE_SZ}.csv
+mv lsm_state.txt ~/EXP_RES/RAW/${ZONE_SZ}_LSMHistoryTable.txt
+#python3 ./scripts/zone_info_parser.py ~/EXP_RES/RAW/${ZONE_SZ}.txt ~/EXP_RES/RAW/${ZONE_SZ}_CompactionTable.txt ~/EXP_RES/CSV/${ZONE_SZ}.csv
 
 rmdir /sys/kernel/config/nullb/zns_nullb
 

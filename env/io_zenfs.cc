@@ -163,7 +163,8 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       fileSize(0),
       filename_(filename),
       file_id_(file_id),
-      nr_synced_extents_(0) {}
+      nr_synced_extents_(0),
+      is_appending_(false){}
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -302,6 +303,7 @@ void ZoneFile::PushExtent() {
   //This is because block size alignment.
   length = fileSize - extent_filepos_;
   if (length == 0){
+      active_zone_->is_append.store(false);
       return;  
   }
 
@@ -310,10 +312,10 @@ void ZoneFile::PushExtent() {
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
   active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, filename_));
-
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;
+  active_zone_->is_append.store(false);
 }
 
 /* Assumes that data and size are block aligned */
@@ -325,11 +327,11 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
 
   if (active_zone_ == NULL) {
     active_zone_ = zbd_->AllocateZone(lifetime_);
-    
+
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
     }
-    
+    active_zone_->is_append.store(true);   
     extent_start_ = active_zone_->wp_;
     extent_filepos_ = fileSize;
   }
@@ -338,12 +340,13 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     if (active_zone_->capacity_ == 0) {
       PushExtent(); 
       active_zone_->CloseWR();
+      active_zone_->is_append.store(false);
+     
       active_zone_ = zbd_->AllocateZone(lifetime_);
- 
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }
-      
+      active_zone_->is_append.store(true);
       extent_start_ = active_zone_->wp_;
       extent_filepos_ = fileSize;
     }
@@ -360,7 +363,6 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     left -= wr_size;
     offset += wr_size;
   }
-  
   fileSize -= (data_size - valid_size);
   return IOStatus::OK();
 }
@@ -411,7 +413,7 @@ IOStatus ZonedWritableFile::Truncate(uint64_t size,
 IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
                                   IODebugContext* /*dbg*/) {
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   buffer_mtx_.lock();
   s = FlushBuffer();
   buffer_mtx_.unlock();
@@ -419,7 +421,7 @@ IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
     return s;
   }
   zoneFile_->PushExtent();
-
+  zoneFile_->is_appending_.store(false);
   return metadata_writer_->Persist(zoneFile_);
 }
 
@@ -452,7 +454,7 @@ IOStatus ZonedWritableFile::Close(const IOOptions& options,
 IOStatus ZonedWritableFile::FlushBuffer() {
   uint32_t align, pad_sz = 0, wr_sz;
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   if (!buffer_pos) return IOStatus::OK();
 
   align = buffer_pos % block_sz;
@@ -468,7 +470,7 @@ IOStatus ZonedWritableFile::FlushBuffer() {
 
   wp += buffer_pos;
   buffer_pos = 0;
-
+  zoneFile_->is_appending_.store(false);
   return IOStatus::OK();
 }
 
@@ -536,6 +538,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
                                    IODebugContext* /*dbg*/) {
   IOStatus s;
 
+  zoneFile_->is_appending_.store(true);
   if (buffered) {
     buffer_mtx_.lock();
     s = BufferedWrite(data);
@@ -544,7 +547,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
     s = zoneFile_->Append((void*)data.data(), data.size(), data.size());
     if (s.ok()) wp += data.size();
   }
-
+  zoneFile_->is_appending_.store(false);
   return s;
 }
 
@@ -552,7 +555,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
                                              const IOOptions& /*options*/,
                                              IODebugContext* /*dbg*/) {
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   if (offset != wp) {
     assert(false);
     return IOStatus::IOError("positioned append not at write pointer");
@@ -566,7 +569,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
     s = zoneFile_->Append((void*)data.data(), data.size(), data.size());
     if (s.ok()) wp += data.size();
   }
-
+  zoneFile_->is_appending_.store(false);
   return s;
 }
 

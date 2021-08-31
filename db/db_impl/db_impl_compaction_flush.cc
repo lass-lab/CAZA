@@ -20,7 +20,7 @@
 #include "test_util/sync_point.h"
 #include "util/cast_util.h"
 #include "util/concurrent_task_limiter_impl.h"
-
+#include "env/exp.h"
 namespace ROCKSDB_NAMESPACE {
 
 bool DBImpl::EnoughRoomForCompaction(
@@ -203,6 +203,9 @@ Status DBImpl::FlushMemTableToOutputFile(
   // is unlocked by the current thread.
   if (s.ok()) {
     s = flush_job.Run(&logs_with_prep_tracker_, &file_meta);
+#ifdef EXPERIMENT
+    LogLSMStateHistoryWithZoneState();
+#endif
   } else {
     flush_job.Cancel();
   }
@@ -2973,11 +2976,15 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         "DBImpl::BackgroundCompaction:NonTrivial:BeforeRun", nullptr);
     // Should handle erorr?
     InsertCompactionFileList(job_context->job_id, c.get()->inputs());
+    
     compaction_job.Run().PermitUncheckedError();
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:NonTrivial:AfterRun");
     mutex_.Lock();
 
     status = compaction_job.Install(*c->mutable_cf_options());
+#ifdef EXPERIMENT
+    LogLSMStateHistoryWithZoneState();
+#endif
     io_s = compaction_job.io_status();
     if (status.ok()) {
       InstallSuperVersionAndScheduleWork(c->column_family_data(),

@@ -324,10 +324,13 @@ if __name__ == "__main__" :
     zinfname = sys.argv[1] # raw data set for zone information
     cinfname = sys.argv[2] # raw data set for compaction information
     ofname = sys.argv[3]
-    
+    ofname_2 = sys.argv[3]+"_files"
+  
     outf = open(ofname, "w", newline='')
+    outf_2 = open(ofname_2, "w", newline='')
 
     outf_writer = csv.writer(outf)
+    outf_writer_2 = csv.writer(outf_2)
 
     GetCompactionSet(cinfname)
 
@@ -538,6 +541,4 @@ if __name__ == "__main__" :
             copied_data = int(tmp[1])
 
             ConvertCSVForm(copied_data, outf_writer)
-            PrintZoneSSTStatusAsCSV(outf_writer)
-            print("process one zc info")
-            break
+            PrintZoneSSTStatusAsCSV(outf_writer_2)

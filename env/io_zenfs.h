@@ -48,10 +48,10 @@ class ZoneFile {
   uint64_t fileSize;
   std::string filename_;
   uint64_t file_id_;
-
   uint32_t nr_synced_extents_;
 
  public:
+  std::atomic<bool> is_appending_;
   std::atomic<bool> marked_for_del;
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,

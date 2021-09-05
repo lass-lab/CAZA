@@ -29,6 +29,7 @@
 #include "db/db_impl/db_impl.h"
 #include "rocksdb/env.h"
 #include "rocksdb/io_status.h"
+//#include "env/io_zenfs.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -44,12 +45,21 @@ struct ZoneExtentInfo {
     ZoneExtent* extent_;
     ZoneFile* zone_file_;
     bool valid_;
-    uint64_t length_;
+    uint32_t length_;
+    uint64_t start_;
+    Zone* zone_;
     std::string fname_;
+    Env::WriteLifeTimeHint lt_;
 
-    explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint64_t length, std::string fname) 
-        : extent_(extent), zone_file_(zone_file), valid_(valid), length_(length), fname_(fname) {
-        };
+    explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint64_t length, uint64_t start, Zone* zone, std::string fname, Env::WriteLifeTimeHint lt) 
+        : extent_(extent), 
+          zone_file_(zone_file), 
+          valid_(valid), 
+          length_(length), 
+          start_(start), 
+          zone_(zone), 
+          fname_(fname), 
+          lt_(lt){ };
     
     void invalidate() {
         assert(extent_ != nullptr);
@@ -88,7 +98,7 @@ class Zone {
  public:
   explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z, const uint32_t id);
 
-  std::mutex zone_mtx_;
+  std::mutex zone_del_mtx_;
   const uint32_t zone_id_; /* increment from 0 */
   uint64_t start_;
   uint64_t capacity_; /* remaining capacity */
@@ -97,6 +107,10 @@ class Zone {
   bool open_for_write_;
   std::atomic<bool> is_append; /*hold when append*/
   Env::WriteLifeTimeHint lifetime_;
+/* weighted average is used only when Allocated for ZC 
+ * and corner case in AllocateZone
+ * (Corner Case) : All zone has no invalid data but cannot allocate since rough lifetime estimation*/
+  double secondary_lifetime_;
   std::atomic<long> used_capacity_;
 
   IOStatus Reset();
@@ -112,30 +126,13 @@ class Zone {
   //list of extents lives in here.
   std::vector<ZoneExtentInfo *> extent_info_;
   void CloseWR(); /* Done writing */
-  
+  void Invalidate(ZoneExtent* extent);
+ 
   void PushExtentInfo(ZoneExtentInfo* extent_info) { 
     extent_info_.push_back(extent_info);
   };
-    
-  void Invalidate(ZoneExtent* extent) {
-    bool found = false;
-    for(auto ex : extent_info_) {
-        if (ex->extent_ == extent) {
-            if(found){
-                fprintf(stderr, "Duplicate Extent in Invalidate\n");
-            }
-            if(extent == nullptr){
-                fprintf(stderr, "Try to invalidate extent which is nullptr!\n");
-            }
-            ex->invalidate();
-            found = true;
-        }
-    }
 
-    if (!found ){
-       fprintf(stderr, "Failed to Find extent in the zone\n");
-    }
-  };
+  void UpdateSecondaryLifeTime(Env::WriteLifeTimeHint lt, uint64_t length);
 };
 
 class ZonedBlockDevice {

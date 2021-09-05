@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ZONE_SZ=128
-NR_ZONE=800
+ZONE_SZ=256
+NR_ZONE=400
 SIZE=$(($ZONE_SZ*$NR_ZONE))
 
 modprobe null_blk

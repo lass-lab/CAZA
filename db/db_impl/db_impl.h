@@ -22,6 +22,7 @@
 #include <iostream>
 
 #include <mutex>
+#include <chrono>
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_job.h"
@@ -147,6 +148,7 @@ class DBImpl : public DB {
   std::mutex compaction_input_mutex_;
   std::ofstream lsm_ofile;
   std::mutex lsm_ofile_mutex_;
+  std::chrono::time_point<std::chrono::system_clock> start_t_;
 
   std::map<int, std::vector<uint64_t>> compaction_inputs_;
   void printCompactionHistory();
@@ -157,6 +159,7 @@ class DBImpl : public DB {
     lsm_ofile.close();
     lsm_ofile_mutex_.unlock();
   }
+  unsigned long long GetTimeStamp();
   //Only Used for ZenFS Experiment
   const Comparator* GetUserComp(){
   //Only Used for ZenFS Experiment

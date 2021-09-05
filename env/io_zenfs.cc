@@ -115,7 +115,7 @@ Status ZoneFile::DecodeFrom(Slice* input) {
         extent->zone_->used_capacity_ += extent->length_;
         extents_.push_back(extent);
         fprintf(stderr, "Push Extent info in ZoneFile::DecodeFrom\n");
-        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_, filename_));
+        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_,extent->start_, extent->zone_, filename_, this->lifetime_));
         break;
       default:
         return Status::Corruption("ZoneFile", "Unexpected tag");
@@ -144,7 +144,7 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
 
     extents_.push_back(new_extent);
     fprintf(stderr, "Push Extent info in ZoneFile::MergeUpdate\n");
-    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, filename_);
+    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, new_extent->start_, new_extent->zone_, filename_, this->lifetime_);
     zone->PushExtentInfo(new_extent_info);
 
   }
@@ -164,7 +164,8 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       filename_(filename),
       file_id_(file_id),
       nr_synced_extents_(0),
-      is_appending_(false){}
+      is_appending_(false),
+      marked_for_del_(false){}
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -174,22 +175,22 @@ uint64_t ZoneFile::GetFileSize() { return fileSize; }
 void ZoneFile::SetFileSize(uint64_t sz) { fileSize = sz; }
 
 ZoneFile::~ZoneFile() {
-  
-  zbd_->zone_cleaning_mtx.lock();
+
+  while(zbd_->zc_in_progress_.load() == true){}
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
    
     Zone* zone = (*e)->zone_;
-    
     assert(zone);
     assert(zone->used_capacity_.load() >= (*e)->length_);
+
+    zone->zone_del_mtx_.lock();
     zone->used_capacity_ -= (*e)->length_;
     
     zone->Invalidate(*e);
     delete *e;
+    zone->zone_del_mtx_.unlock();
   }
   CloseWR();
-  zbd_->zone_cleaning_mtx.unlock();
-
 }
 
 void ZoneFile::CloseWR() {
@@ -311,7 +312,8 @@ void ZoneFile::PushExtent() {
   ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
-  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, filename_));
+  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_));
+  active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;

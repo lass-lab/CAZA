@@ -9,7 +9,7 @@ global_zone_info = []
 
 fno_per_zone = [] # key : zone start, value : list of valid sst list and invalid sst list 
 gc_cnt = 0
-
+elpased_time = 0
 def PrintZoneSSTStatusAsCSV(outf_writer) :
     tmp = []
     outf_writer.writerow(tmp)
@@ -165,7 +165,7 @@ def GetCompactionSet(cin_fname) :
 
 def ConvertCSVForm(copied_data, outf_writer) :
 
-    col = ["GC "+str(gc_cnt), "COPIED "+str(copied_data)]
+    col = ["GC "+str(gc_cnt), "COPIED "+str(copied_data), "TimeStamp "+str(elapsed_time)]
     outf_writer.writerow(col)
 
     max_val_sst = 0
@@ -324,7 +324,7 @@ if __name__ == "__main__" :
     zinfname = sys.argv[1] # raw data set for zone information
     cinfname = sys.argv[2] # raw data set for compaction information
     ofname = sys.argv[3]
-    ofname_2 = sys.argv[3]+"_files"
+    ofname_2 = sys.argv[3][:len(sys.argv[3])-3]+"_files.csv"
   
     outf = open(ofname, "w", newline='')
     outf_2 = open(ofname_2, "w", newline='')
@@ -353,9 +353,9 @@ if __name__ == "__main__" :
 
         # GC count
         if line[0] == 'G':
-            tmp = re.split(' : |\n', line)
-            gc_cnt = int(tmp[1]) 
-        
+            tmp = re.split(' : |"T"|\n', line)
+            elapsed_time = int(tmp[2])
+            gc_cnt = int(tmp[1][:len(tmp[1])-4])
         elif line[0] == 'Z':
             inval_ext_cnt = 0;
             val_ext_cnt = 0;

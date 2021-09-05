@@ -52,7 +52,7 @@ class ZoneFile {
 
  public:
   std::atomic<bool> is_appending_;
-  std::atomic<bool> marked_for_del;
+  std::atomic<bool> marked_for_del_;
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
                     uint64_t file_id_);
@@ -87,7 +87,9 @@ class ZoneFile {
   Status MergeUpdate(ZoneFile* update);
 
   std::vector<ZoneExtent*>& GetExtentsList(){return extents_;};
-  void UpdateExtents(std::vector<ZoneExtent*>& a){extents_ = a; };
+  void UpdateExtents(std::vector<ZoneExtent*>& a){
+      extents_ = a;
+  };
   uint64_t GetID() { return file_id_; }
   size_t GetUniqueId(char* id, size_t max_size);
 

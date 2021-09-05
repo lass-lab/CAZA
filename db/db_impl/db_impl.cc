@@ -27,6 +27,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <fstream>
+#include <chrono>
 
 #include "db/arena_wrapped_db_iter.h"
 #include "db/builder.h"
@@ -272,13 +273,24 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
   lsm_ofile.open("lsm_state.txt");
+  start_t_ = std::chrono::system_clock::now();
+}
+
+unsigned long long DBImpl::GetTimeStamp(){
+
+    std::chrono::time_point<std::chrono::system_clock> cur_t_;
+    unsigned long long elapsed_;
+    cur_t_ = std::chrono::system_clock::now();
+    elapsed_ = std::chrono::duration_cast<std::chrono::milliseconds>(cur_t_ - start_t_).count();
+
+    return elapsed_;
 }
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
     
     std::ofstream outfile;
     outfile.open("compactions.txt");
-    
+ 
     for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
         outfile << "job_id : " <<it->first << std::endl;
         outfile << "num_files : "<<it->second.size() << std::endl;
@@ -308,8 +320,11 @@ void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<Compa
 //Only used for ZenFS Experiment
 void DBImpl::LogLSMStateHistoryWithZoneState() {
     lsm_ofile_mutex_.lock();
+    
     auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
-    lsm_ofile<< "LSM_STATE"<<std::endl;
+    lsm_ofile << "LSM_STATE " <<"Time : " << GetTimeStamp() << std::endl;
+    lsm_ofile << "version number : " << versions_->GetColumnFamilySet()->GetDefault()->current()->GetVersionNumber() << std::endl;
+
     for(int i = 0; i < vstorage->num_levels(); i++) {
         for(const auto* f : vstorage->LevelFiles(i)) {
   
@@ -319,6 +334,7 @@ void DBImpl::LogLSMStateHistoryWithZoneState() {
             
             lsm_ofile << fileno <<","<<i<<","<<num_of_ext<<",";
             for(int ext_no = 0; ext_no < num_of_ext; ext_no++){
+                if(ext_no > 0) lsm_ofile <<",";
                 int zone_id;
                 uint32_t extent_length;
                 uint32_t extent_start;

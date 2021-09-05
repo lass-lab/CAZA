@@ -38,4 +38,4 @@ echo deadline > /sys/class/block/$DEV/queue/scheduler
 #./db_bench --fs_uri=zenfs://dev:$DEV --key_size=16 --value_size=4096 --target_file_size_base=$TARGET_FZ_BASE --write_buffer_size=$WB_SIZE --max_bytes_for_level_base=$MAX_BYTES_FOR_LEVEL_BASE --max_bytes_for_level_multiplier=4 --use_direct_io_for_flush_and_compaction --max_background_jobs=$(nproc) --num=1000000 --benchmarks="fillrandom"
 
 # 80G
- ./db_bench --fs_uri=zenfs://dev:$DEV --key_size=16 --value_size=4096 --num=20889920 --use_direct_io_for_flush_and_compaction --max_background_jobs=$(nproc) --benchmarks="fillrandom" --compression_ratio=1
+# ./db_bench --fs_uri=zenfs://dev:$DEV --key_size=16 --value_size=4096 --num=20889920 --use_direct_io_for_flush_and_compaction --max_background_jobs=$(nproc) --benchmarks="fillrandom" --compression_ratio=1

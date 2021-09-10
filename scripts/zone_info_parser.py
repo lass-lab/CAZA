@@ -15,7 +15,7 @@ def PrintZoneSSTStatusAsCSV(outf_writer) :
     outf_writer.writerow(tmp)
     outf_writer.writerow(tmp)
 
-    num_zone = len(fno_per_zone) / 2
+    num_zone = len(fno_per_zone)
 
     max_inval_sst = 0
     max_val_sst = 0

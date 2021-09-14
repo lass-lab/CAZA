@@ -48,10 +48,12 @@ class ZoneFile {
   uint64_t fileSize;
   std::string filename_;
   uint64_t file_id_;
-
   uint32_t nr_synced_extents_;
 
  public:
+  std::atomic<bool> is_appending_;
+  std::atomic<bool> marked_for_del_;
+  Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
                     uint64_t file_id_);
 
@@ -84,8 +86,13 @@ class ZoneFile {
   Status DecodeFrom(Slice* input);
   Status MergeUpdate(ZoneFile* update);
 
+  std::vector<ZoneExtent*>& GetExtentsList(){return extents_;};
+  void UpdateExtents(std::vector<ZoneExtent*>& a){
+      extents_ = a;
+  };
   uint64_t GetID() { return file_id_; }
   size_t GetUniqueId(char* id, size_t max_size);
+
 };
 
 class ZonedWritableFile : public FSWritableFile {
@@ -101,7 +108,7 @@ class ZonedWritableFile : public FSWritableFile {
                              ZoneFile* zoneFile,
                              MetadataWriter* metadata_writer = nullptr);
   virtual ~ZonedWritableFile();
-
+  
   virtual IOStatus Append(const Slice& data, const IOOptions& options,
                           IODebugContext* dbg) override;
   virtual IOStatus Append(const Slice& data, const IOOptions& opts,

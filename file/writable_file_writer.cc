@@ -407,6 +407,7 @@ IOStatus WritableFileWriter::WriteBuffered(const char* data, size_t size) {
       {
         auto prev_perf_level = GetPerfLevel();
         IOSTATS_CPU_TIMER_GUARD(cpu_write_nanos, env_);
+        //(ZenFS) Write to ZonedWritableFile here
         s = writable_file_->Append(Slice(src, allowed), IOOptions(), nullptr);
         SetPerfLevel(prev_perf_level);
       }

@@ -722,7 +722,6 @@ class LegacyWritableFileWrapper : public FSWritableFile {
  public:
   explicit LegacyWritableFileWrapper(std::unique_ptr<WritableFile>&& _target)
       : target_(std::move(_target)) {}
-
   IOStatus Append(const Slice& data, const IOOptions& /*options*/,
                   IODebugContext* /*dbg*/) override {
     return status_to_io_status(target_->Append(data));

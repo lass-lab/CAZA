@@ -20,7 +20,7 @@
 #include "test_util/sync_point.h"
 #include "util/cast_util.h"
 #include "util/concurrent_task_limiter_impl.h"
-
+#include "env/exp.h"
 namespace ROCKSDB_NAMESPACE {
 
 bool DBImpl::EnoughRoomForCompaction(
@@ -194,7 +194,26 @@ Status DBImpl::FlushMemTableToOutputFile(
   } else {
     TEST_SYNC_POINT("DBImpl::SyncClosedLogs:Skip");
   }
+/*
+  autovector<MemTable*> mems = flush_job.GetMemTables();
+  std::vector<InternalIterator*> memtables;
+  std::vector<std::unique_ptr<FragmentedRangeTombstoneIterator>> range_del_iters;
+  ReadOptions ro;
+  ro.total_order_seek = true;
+  Arena arenaa;
+  Slice smallest, largest;
 
+  assert(flush_job.get_mems_size() == 1);
+  memtables.push_back(mems[0]->NewIterator(ro, &arenaa));
+
+  iter.get->SeekToFirst();
+  smallest = iter.get()->key();
+  iter.get->SeekToLast();
+  largest = iter.get()->key();
+  uint64_t f_fno = flush_job.GetMeta()->fd.GetNumber();*/
+//  FDForZoneFile* fd_for_zone = new FDForZoneFile(f_fno, smallest, largest, 0/*outpue level*/);
+//  bool rettt = InsertFDForZoneFile(f_fno, fd_for_zone);
+//  assert(rettt);
   // Within flush_job.Run, rocksdb may call event listener to notify
   // file creation and deletion.
   //
@@ -203,13 +222,15 @@ Status DBImpl::FlushMemTableToOutputFile(
   // is unlocked by the current thread.
   if (s.ok()) {
     s = flush_job.Run(&logs_with_prep_tracker_, &file_meta);
+#ifdef EXPERIMENT
+    LogLSMStateHistoryWithZoneState();
+#endif
   } else {
     flush_job.Cancel();
   }
   if (io_s.ok()) {
     io_s = flush_job.io_status();
   }
-
   if (s.ok()) {
     InstallSuperVersionAndScheduleWork(cfd, superversion_context,
                                        mutable_cf_options);
@@ -973,6 +994,7 @@ Status DBImpl::CompactFiles(const CompactionOptions& compact_options,
                             const int output_level, const int output_path_id,
                             std::vector<std::string>* const output_file_names,
                             CompactionJobInfo* compaction_job_info) {
+
 #ifdef ROCKSDB_LITE
   (void)compact_options;
   (void)column_family;
@@ -2889,6 +2911,10 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                                     *c->mutable_cf_options(), c->edit(),
                                     &mutex_, directories_.GetDbDir());
     io_s = versions_->io_status();
+#ifdef EXPERIMENT
+    LogLSMStateHistoryWithZoneState();
+#endif
+
     // Use latest MutableCFOptions
     InstallSuperVersionAndScheduleWork(c->column_family_data(),
                                        &job_context->superversion_contexts[0],
@@ -2965,6 +2991,11 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         is_manual ? &manual_compaction_paused_ : nullptr, db_id_,
         db_session_id_);
     compaction_job.Prepare();
+    //TODO::Percacluate Max and Min User level key with Compaction argument of current compaction job.
+
+    //Slice s_key, l_key;
+    //compaction_job.PreCalculateMinMaxKey(s_key, l_key);
+    //uint64_t c_fno = compaction_job.GetMeta()->fd.GetNumber();
 
     NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
                             compaction_job_stats, job_context->job_id);
@@ -2972,11 +3003,16 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     TEST_SYNC_POINT_CALLBACK(
         "DBImpl::BackgroundCompaction:NonTrivial:BeforeRun", nullptr);
     // Should handle erorr?
+#ifdef EXPERIMENT
+    InsertCompactionFileList(job_context->job_id, c.get()->inputs());
+#endif    
     compaction_job.Run().PermitUncheckedError();
     TEST_SYNC_POINT("DBImpl::BackgroundCompaction:NonTrivial:AfterRun");
     mutex_.Lock();
-
     status = compaction_job.Install(*c->mutable_cf_options());
+#ifdef EXPERIMENT
+    LogLSMStateHistoryWithZoneState();
+#endif
     io_s = compaction_job.io_status();
     if (status.ok()) {
       InstallSuperVersionAndScheduleWork(c->column_family_data(),

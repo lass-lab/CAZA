@@ -24,6 +24,11 @@
 #include <utility>
 #include <vector>
 
+#include <mutex>
+#include <shared_mutex>
+#include <fstream>
+#include <chrono>
+
 #include "db/arena_wrapped_db_iter.h"
 #include "db/builder.h"
 #include "db/compaction/compaction_job.h"
@@ -237,7 +242,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   assert(batch_per_txn_ || seq_per_batch_);
   // TODO: Check for an error here
   env_->GetAbsolutePath(dbname, &db_absolute_path_).PermitUncheckedError();
-
+  fs_->SetDBPointer(this);
   // Reserve ten files or so for other uses and give the rest to TableCache.
   // Give a large number for setting of "infinite" open files.
   const int table_cache_size = (mutable_db_options_.max_open_files == -1)
@@ -267,6 +272,91 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
+  lsm_ofile.open("lsm_state.txt");
+  start_t_ = std::chrono::system_clock::now();
+}
+
+unsigned long long DBImpl::GetTimeStamp(){
+
+    std::chrono::time_point<std::chrono::system_clock> cur_t_;
+    unsigned long long elapsed_;
+    cur_t_ = std::chrono::system_clock::now();
+    elapsed_ = std::chrono::duration_cast<std::chrono::milliseconds>(cur_t_ - start_t_).count();
+
+    return elapsed_;
+}
+bool DBImpl::InsertFDForZoneFile(uint64_t fno, FDForZoneFile* fd_for_zone_file) {
+  fd_mutex_.lock();
+  auto ret = fd_for_zone_file_.insert(std::pair<uint64_t, FDForZoneFile*>(fno, fd_for_zone_file));
+  fd_mutex_.unlock();
+  
+  if(!ret.second)
+    std::cerr << "Insert with fno( " << fno <<") failed" <<std::endl;
+  
+  return true;
+}
+
+//Only used for ZenFS Experiment
+void DBImpl::printCompactionHistory(){
+    
+    std::ofstream outfile;
+    outfile.open("compactions.txt");
+ 
+    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
+        outfile << "job_id : " <<it->first << std::endl;
+        outfile << "num_files : "<<it->second.size() << std::endl;
+        for(auto num : it->second){
+            outfile << num << std::endl;
+        }
+    }
+}
+//Only used for ZenFS Experiment
+void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<CompactionInputFiles>* inputs){
+    
+    std::vector<uint64_t> file_nums;
+    int id = job_id;
+    for(const CompactionInputFiles cif : (*inputs)) {
+        for (const FileMetaData* fmeta : cif.files){
+            uint64_t fno = fmeta->fd.GetNumber();
+            file_nums.push_back(fno);
+        }
+    }
+    assert(!file_nums.empty());
+    assert(compaction_inputs_.find(job_id) == compaction_inputs_.end());
+    
+    compaction_input_mutex_.lock();
+    compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
+    compaction_input_mutex_.unlock();
+}
+//Only used for ZenFS Experiment
+void DBImpl::LogLSMStateHistoryWithZoneState() {
+    lsm_ofile_mutex_.lock();
+    
+    auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+    lsm_ofile << "LSM_STATE " <<"Time : " << GetTimeStamp() << std::endl;
+    lsm_ofile << "version number : " << versions_->GetColumnFamilySet()->GetDefault()->current()->GetVersionNumber() << std::endl;
+
+    for(int i = 0; i < vstorage->num_levels(); i++) {
+        for(const auto* f : vstorage->LevelFiles(i)) {
+  
+            uint64_t fileno = f->fd.GetNumber();
+            int num_of_ext = fs_->GetZonedFileExtentNum(fileno);
+            assert(num_of_ext != -1);
+            
+            lsm_ofile << fileno <<","<<i<<","<<num_of_ext<<",";
+            for(int ext_no = 0; ext_no < num_of_ext; ext_no++){
+                if(ext_no > 0) lsm_ofile <<",";
+                int zone_id;
+                uint32_t extent_length;
+                uint32_t extent_start;
+                fs_->GetExtentInfo(fileno, ext_no, zone_id, extent_length, extent_start);
+                lsm_ofile << zone_id <<","<<extent_start<<","<<extent_length;
+            }
+            lsm_ofile<<std::endl;
+        }
+    }
+
+    lsm_ofile_mutex_.unlock();
 }
 
 Status DBImpl::Resume() {
@@ -658,6 +748,8 @@ DBImpl::~DBImpl() {
     closed_ = true;
     CloseHelper().PermitUncheckedError();
   }
+  printCompactionHistory();
+  CloseLSMHistoryFile();  
 }
 
 void DBImpl::MaybeIgnoreError(Status* s) const {

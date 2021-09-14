@@ -103,6 +103,8 @@ class CompactionJob {
   // Return the IO status
   IOStatus io_status() const { return io_status_; }
 
+  void PreCalculateMinMaxKey(Slice&, Slice&);
+  void PrintMinMaxKey();
  private:
   struct SubcompactionState;
 
@@ -114,7 +116,6 @@ class CompactionJob {
   // each consecutive pair of slices. Then it divides these ranges into
   // consecutive groups such that each group has a similar size.
   void GenSubcompactionBoundaries();
-
   // update the thread status for starting a compaction.
   void ReportStartedCompaction(Compaction* compaction);
   void AllocateCompactionOutputFileNumbers();
@@ -144,7 +145,6 @@ class CompactionJob {
 
   int job_id_;
 
-  // CompactionJob state
   struct CompactionState;
   CompactionState* compact_;
   CompactionJobStats* compaction_job_stats_;

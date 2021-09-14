@@ -65,6 +65,8 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 
+#include "env/exp.h"
+
 namespace ROCKSDB_NAMESPACE {
 
 const char* GetCompactionReasonString(CompactionReason compaction_reason) {
@@ -888,6 +890,32 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
   CleanupCompaction();
   return status;
 }
+//Only Used for ZenFS Experiment
+void CompactionJob::PreCalculateMinMaxKey(Slice& smallest, Slice& largest) {
+
+    ColumnFamilyData* cfd = compact_->compaction->column_family_data();
+    auto vstorage = cfd->current()->storage_info();
+    const InternalKeyComparator* icmp = vstorage->InternalComparator();
+
+    compact_->compaction->PreCalculateMinMaxKey(smallest, largest, icmp);
+
+}
+
+void CompactionJob::PrintMinMaxKey() {
+
+    Slice s = compact_->SmallestUserKey();
+    Slice l = compact_->LargestUserKey();
+
+    std::cerr <<"After Compaction" << std::endl;
+    std::cerr <<"smallest_key :: ";
+    for (size_t i=0; i<s.size(); i++)
+        std::cerr << s.data()[i];
+    std::cerr<<std::endl;
+    std::cerr <<"smallest_key :: ";
+    for (size_t i=0; i<l.size(); i++)
+        std::cerr << l.data()[i];
+    std::cerr<<std::endl;
+}
 
 void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
   assert(sub_compact);
@@ -1020,7 +1048,6 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
           ? nullptr
           : sub_compact->compaction->CreateSstPartitioner();
   std::string last_key_for_partitioner;
-
   while (status.ok() && !cfd->IsDropped() && c_iter->Valid()) {
     // Invariant: c_iter.status() is guaranteed to be OK if c_iter->Valid()
     // returns true.
@@ -1457,7 +1484,6 @@ Status CompactionJob::FinishCompactionOutputFile(
   }
   sub_compact->current_output()->finished = true;
   sub_compact->total_bytes += current_bytes;
-
   // Finish and check for file errors
   if (s.ok()) {
     StopWatch sw(env_, stats_, COMPACTION_OUTFILE_SYNC_MICROS);
@@ -1483,6 +1509,7 @@ Status CompactionJob::FinishCompactionOutputFile(
     // "normal" status, it does not also need to be checked
     sub_compact->io_status.PermitUncheckedError();
   }
+
   sub_compact->outfile.reset();
 
   TableProperties tp;

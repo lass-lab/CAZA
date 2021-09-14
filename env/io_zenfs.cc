@@ -114,6 +114,8 @@ Status ZoneFile::DecodeFrom(Slice* input) {
           return Status::Corruption("ZoneFile", "Invalid zone extent");
         extent->zone_->used_capacity_ += extent->length_;
         extents_.push_back(extent);
+        fprintf(stderr, "Push Extent info in ZoneFile::DecodeFrom\n");
+        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_,extent->start_, extent->zone_, filename_, this->lifetime_));
         break;
       default:
         return Status::Corruption("ZoneFile", "Unexpected tag");
@@ -125,6 +127,7 @@ Status ZoneFile::DecodeFrom(Slice* input) {
 }
 
 Status ZoneFile::MergeUpdate(ZoneFile* update) {
+  
   if (file_id_ != update->GetID())
     return Status::Corruption("ZoneFile update", "ID missmatch");
 
@@ -132,15 +135,21 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
   SetFileSize(update->GetFileSize());
 
   std::vector<ZoneExtent*> update_extents = update->GetExtents();
+  
   for (long unsigned int i = 0; i < update_extents.size(); i++) {
     ZoneExtent* extent = update_extents[i];
     Zone* zone = extent->zone_;
     zone->used_capacity_ += extent->length_;
-    extents_.push_back(new ZoneExtent(extent->start_, extent->length_, zone));
+    ZoneExtent* new_extent = new ZoneExtent(extent->start_,extent->length_, zone);
+
+    extents_.push_back(new_extent);
+    fprintf(stderr, "Push Extent info in ZoneFile::MergeUpdate\n");
+    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, new_extent->start_, new_extent->zone_, filename_, this->lifetime_);
+    zone->PushExtentInfo(new_extent_info);
+
   }
 
   MetadataSynced();
-
   return Status::OK();
 }
 
@@ -154,7 +163,9 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       fileSize(0),
       filename_(filename),
       file_id_(file_id),
-      nr_synced_extents_(0) {}
+      nr_synced_extents_(0),
+      is_appending_(false),
+      marked_for_del_(false){}
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -164,12 +175,20 @@ uint64_t ZoneFile::GetFileSize() { return fileSize; }
 void ZoneFile::SetFileSize(uint64_t sz) { fileSize = sz; }
 
 ZoneFile::~ZoneFile() {
-  for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
-    Zone* zone = (*e)->zone_;
 
-    assert(zone && zone->used_capacity_ >= (*e)->length_);
+  while(zbd_->zc_in_progress_.load() == true){}
+  for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
+   
+    Zone* zone = (*e)->zone_;
+    assert(zone);
+    assert(zone->used_capacity_.load() >= (*e)->length_);
+
+    zone->zone_del_mtx_.lock();
     zone->used_capacity_ -= (*e)->length_;
+    
+    zone->Invalidate(*e);
     delete *e;
+    zone->zone_del_mtx_.unlock();
   }
   CloseWR();
 }
@@ -278,62 +297,74 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
 
 void ZoneFile::PushExtent() {
   uint64_t length;
-
   assert(fileSize >= extent_filepos_);
 
   if (!active_zone_) return;
-
+  //(ZC)::Extent length could be less than exactly data size written zone.
+  //This is because block size alignment.
   length = fileSize - extent_filepos_;
-  if (length == 0) return;
+  if (length == 0){
+      active_zone_->is_append.store(false);
+      return;  
+  }
 
   assert(length <= (active_zone_->wp_ - extent_start_));
-  extents_.push_back(new ZoneExtent(extent_start_, length, active_zone_));
-
+  ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
+  extents_.push_back(new_extent);
+  //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
+  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_));
+  active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;
+  active_zone_->is_append.store(false);
 }
 
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
-    
+
   uint32_t left = data_size;
   uint32_t wr_size, offset = 0;
   IOStatus s;
 
   if (active_zone_ == NULL) {
     active_zone_ = zbd_->AllocateZone(lifetime_);
-    if (!active_zone_) {
-      return IOStatus::NoSpace("Zone allocation failure\n");
+
+    if(!active_zone_) {
+       return IOStatus::NoSpace("Zone allocation failure\n");
     }
+    active_zone_->is_append.store(true);   
     extent_start_ = active_zone_->wp_;
     extent_filepos_ = fileSize;
   }
 
   while (left) {
     if (active_zone_->capacity_ == 0) {
-      PushExtent();
-
+      PushExtent(); 
       active_zone_->CloseWR();
+      active_zone_->is_append.store(false);
+     
       active_zone_ = zbd_->AllocateZone(lifetime_);
-      if (!active_zone_) {
-        return IOStatus::NoSpace("Zone allocation failure\n");
+      if(!active_zone_) {
+         return IOStatus::NoSpace("Zone allocation failure\n");
       }
+      active_zone_->is_append.store(true);
       extent_start_ = active_zone_->wp_;
       extent_filepos_ = fileSize;
     }
 
     wr_size = left;
     if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
-
     s = active_zone_->Append((char*)data + offset, wr_size);
-    if (!s.ok()) return s;
+
+    if (!s.ok()){ 
+        return s;
+    }
 
     fileSize += wr_size;
     left -= wr_size;
     offset += wr_size;
   }
-
   fileSize -= (data_size - valid_size);
   return IOStatus::OK();
 }
@@ -384,7 +415,7 @@ IOStatus ZonedWritableFile::Truncate(uint64_t size,
 IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
                                   IODebugContext* /*dbg*/) {
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   buffer_mtx_.lock();
   s = FlushBuffer();
   buffer_mtx_.unlock();
@@ -392,7 +423,7 @@ IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
     return s;
   }
   zoneFile_->PushExtent();
-
+  zoneFile_->is_appending_.store(false);
   return metadata_writer_->Persist(zoneFile_);
 }
 
@@ -425,7 +456,7 @@ IOStatus ZonedWritableFile::Close(const IOOptions& options,
 IOStatus ZonedWritableFile::FlushBuffer() {
   uint32_t align, pad_sz = 0, wr_sz;
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   if (!buffer_pos) return IOStatus::OK();
 
   align = buffer_pos % block_sz;
@@ -441,7 +472,7 @@ IOStatus ZonedWritableFile::FlushBuffer() {
 
   wp += buffer_pos;
   buffer_pos = 0;
-
+  zoneFile_->is_appending_.store(false);
   return IOStatus::OK();
 }
 
@@ -509,6 +540,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
                                    IODebugContext* /*dbg*/) {
   IOStatus s;
 
+  zoneFile_->is_appending_.store(true);
   if (buffered) {
     buffer_mtx_.lock();
     s = BufferedWrite(data);
@@ -517,7 +549,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
     s = zoneFile_->Append((void*)data.data(), data.size(), data.size());
     if (s.ok()) wp += data.size();
   }
-
+  zoneFile_->is_appending_.store(false);
   return s;
 }
 
@@ -525,7 +557,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
                                              const IOOptions& /*options*/,
                                              IODebugContext* /*dbg*/) {
   IOStatus s;
-
+  zoneFile_->is_appending_.store(true);
   if (offset != wp) {
     assert(false);
     return IOStatus::IOError("positioned append not at write pointer");
@@ -539,7 +571,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
     s = zoneFile_->Append((void*)data.data(), data.size(), data.size());
     if (s.ok()) wp += data.size();
   }
-
+  zoneFile_->is_appending_.store(false);
   return s;
 }
 

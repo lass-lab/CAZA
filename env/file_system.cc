@@ -25,6 +25,27 @@ Status FileSystem::Load(const std::string& value,
 #endif
   return s;
 }
+//dummy for ZenFS
+void FileSystem::SetDBPointer(DBImpl* db){
+    db_ptr_ = db;
+}
+//dummy for ZenFS
+int FileSystem::GetZonedFileExtentNum(const uint64_t fileno){
+    uint64_t filenum = fileno;
+    filenum +=1;
+    return 1;
+};
+//dummy for ZenFS
+void FileSystem::GetExtentInfo(const uint64_t fileno, const int ext_no, int& zone_id, uint32_t& extent_length, uint32_t& extent_start){
+    
+    uint64_t filenum = fileno;
+    int a = ext_no;
+    a += 1;
+    filenum +=1;
+    zone_id = -1;
+    extent_length = 0;
+    extent_start = 0;
+}
 
 IOStatus FileSystem::ReuseWritableFile(const std::string& fname,
                                        const std::string& old_fname,

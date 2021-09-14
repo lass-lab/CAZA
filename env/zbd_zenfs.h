@@ -21,28 +21,96 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <queue>
+#include <functional>
 
 #include <iostream>
 
+#include "db/db_impl/db_impl.h"
 #include "rocksdb/env.h"
 #include "rocksdb/io_status.h"
+//#include "env/io_zenfs.h"
 
 namespace ROCKSDB_NAMESPACE {
 
+class DBImpl;
+class Zone;
+class ZoneFile;
 class ZonedBlockDevice;
+class ZoneExtent;
+
+//(ZC)::class and struct added for Zone Cleaning 
+struct ZoneExtentInfo {
+
+    ZoneExtent* extent_;
+    ZoneFile* zone_file_;
+    bool valid_;
+    uint32_t length_;
+    uint64_t start_;
+    Zone* zone_;
+    std::string fname_;
+    Env::WriteLifeTimeHint lt_;
+
+    explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint64_t length, uint64_t start, Zone* zone, std::string fname, Env::WriteLifeTimeHint lt) 
+        : extent_(extent), 
+          zone_file_(zone_file), 
+          valid_(valid), 
+          length_(length), 
+          start_(start), 
+          zone_(zone), 
+          fname_(fname), 
+          lt_(lt){ };
+    
+    void invalidate() {
+        assert(extent_ != nullptr);
+        if(!valid_){
+            fprintf(stderr, "Try to invalidate invalid extent!\n");
+        }       
+        valid_ = false;
+    };
+};
+
+class GCVictimZone {
+    public:
+
+     GCVictimZone(Zone* zone, uint64_t invalid_bytes)
+         : zone_(zone),
+           invalid_bytes_(invalid_bytes){};
+
+     uint64_t get_inval_bytes() const {return invalid_bytes_;};
+     Zone * get_zone_ptr() const {return zone_;};
+
+    private:
+     Zone *zone_;
+     uint64_t invalid_bytes_;
+};
+
+class InvalComp{
+    public:
+        bool operator()(const GCVictimZone *a, const GCVictimZone* b){
+            return a->get_inval_bytes() < b->get_inval_bytes();
+        };
+};
 
 class Zone {
   ZonedBlockDevice *zbd_;
 
  public:
-  explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z);
+  explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z, const uint32_t id);
 
+  std::mutex zone_del_mtx_;
+  const uint32_t zone_id_; /* increment from 0 */
   uint64_t start_;
   uint64_t capacity_; /* remaining capacity */
   uint64_t max_capacity_;
   uint64_t wp_;
   bool open_for_write_;
+  std::atomic<bool> is_append; /*hold when append*/
   Env::WriteLifeTimeHint lifetime_;
+/* weighted average is used only when Allocated for ZC 
+ * and corner case in AllocateZone
+ * (Corner Case) : All zone has no invalid data but cannot allocate since rough lifetime estimation*/
+  double secondary_lifetime_;
   std::atomic<long> used_capacity_;
 
   IOStatus Reset();
@@ -55,19 +123,30 @@ class Zone {
   bool IsEmpty();
   uint64_t GetZoneNr();
   uint64_t GetCapacityLeft();
-
+  //list of extents lives in here.
+  std::vector<ZoneExtentInfo *> extent_info_;
   void CloseWR(); /* Done writing */
+  void Invalidate(ZoneExtent* extent);
+ 
+  void PushExtentInfo(ZoneExtentInfo* extent_info) { 
+    extent_info_.push_back(extent_info);
+  };
+
+  void UpdateSecondaryLifeTime(Env::WriteLifeTimeHint lt, uint64_t length);
 };
 
 class ZonedBlockDevice {
  private:
+  std::priority_queue<GCVictimZone *, std::vector<GCVictimZone *>, InvalComp > gc_queue_;
   std::string filename_;
   uint32_t block_sz_;
   uint32_t zone_sz_;
   uint32_t nr_zones_;
   std::vector<Zone *> io_zones;
   std::mutex io_zones_mtx;
+
   std::vector<Zone *> meta_zones;
+  std::vector<Zone *> reserved_zones; // reserved for a Zone Cleaning
   int read_f_;
   int read_direct_f_;
   int write_f_;
@@ -82,17 +161,30 @@ class ZonedBlockDevice {
 
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
- 
  public:
+  std::atomic<int> append_cnt;
+  int num_zc_cnt;
+  DBImpl* db_ptr_;
+  void SetDBPointer(DBImpl* db);
+  std::mutex zone_cleaning_mtx;
+  std::vector<ZoneFile *> del_pending;
+  std::atomic<bool> zc_in_progress_;
+  std::mutex append_mtx_;
+
+  std::atomic<unsigned long long> WR_DATA;
+
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
   virtual ~ZonedBlockDevice();
+  
+  void printZoneStatus(const std::vector<Zone *>&);
 
   IOStatus Open(bool readonly = false);
 
   Zone *GetIOZone(uint64_t offset);
 
   Zone *AllocateZone(Env::WriteLifeTimeHint lifetime);
+  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones, Env::WriteLifeTimeHint lifetime);
   Zone *AllocateMetaZone();
 
   uint64_t GetFreeSpace();
@@ -115,6 +207,10 @@ class ZonedBlockDevice {
 
   void NotifyIOZoneFull();
   void NotifyIOZoneClosed();
+
+  int ZoneCleaning();
+  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&);
+
 };
 
 }  // namespace ROCKSDB_NAMESPACE

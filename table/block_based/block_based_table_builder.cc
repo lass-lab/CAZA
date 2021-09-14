@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <iostream>
 
 #include "db/dbformat.h"
 #include "index_builder.h"
@@ -280,7 +281,7 @@ struct BlockBasedTableBuilder::Rep {
   std::unique_ptr<UncompressionDict> verify_dict;
 
   size_t data_begin_offset = 0;
-
+  Slice kkey;
   TableProperties props;
 
   // States of the builder.
@@ -483,7 +484,6 @@ struct BlockBasedTableBuilder::Rep {
           ioptions, moptions, context, use_delta_encoding_for_index_values,
           p_index_builder_));
     }
-
     for (auto& collector_factories : *int_tbl_prop_collector_factories) {
       table_properties_collectors.emplace_back(
           collector_factories->CreateIntTblPropCollector(column_family_id));
@@ -497,7 +497,6 @@ struct BlockBasedTableBuilder::Rep {
         verify_ctxs[i].reset(new UncompressionContext(compression_type));
       }
     }
-
     if (!ReifyDbHostIdProperty(ioptions.env, &db_host_id).ok()) {
       ROCKS_LOG_INFO(ioptions.info_log, "db_host_id property will not be set");
     }
@@ -840,6 +839,7 @@ BlockBasedTableBuilder::BlockBasedTableBuilder(
     const uint64_t target_file_size, const uint64_t file_creation_time,
     const std::string& db_id, const std::string& db_session_id) {
   BlockBasedTableOptions sanitized_table_options(table_options);
+  int_tbl_prop_collector_factories_ = int_tbl_prop_collector_factories;
   if (sanitized_table_options.format_version == 0 &&
       sanitized_table_options.checksum != kCRC32c) {
     ROCKS_LOG_WARN(
@@ -849,6 +849,7 @@ BlockBasedTableBuilder::BlockBasedTableBuilder(
     // silently convert format_version to 1 to keep consistent with current
     // behavior
     sanitized_table_options.format_version = 1;
+    skip_filters_ = skip_filters;
   }
 
   rep_ = new Rep(
@@ -877,6 +878,41 @@ BlockBasedTableBuilder::~BlockBasedTableBuilder() {
   // Catch errors where caller forgot to call Finish()
   assert(rep_->state == Rep::State::kClosed);
   delete rep_;
+  for(auto r : reps_to_flush) delete r;
+}
+
+void BlockBasedTableBuilder::FlushAllRep(){
+
+  for(const auto& cur_rep : reps_to_flush) {
+    Rep* r = cur_rep;
+    assert(cur_rep->state != Rep::State::kClosed);
+    if (!ok()) return;
+    if (r->data_block.empty()) return;
+    if (r->IsParallelCompressionEnabled() &&
+        r->state == Rep::State::kUnbuffered) {
+      r->data_block.Finish();
+      ParallelCompressionRep::BlockRep* block_rep = r->pc_rep->PrepareBlock(
+          r->compression_type, r->first_key_in_next_block, &(r->data_block));
+      assert(block_rep != nullptr);
+      r->pc_rep->file_size_estimator.EmitBlock(block_rep->data->size(), 
+                                               r->get_offset());
+      r->pc_rep->EmitBlock(block_rep);
+    } else {
+      WriteBlock(&r->data_block, &r->pending_handle, true /* is_data_block */);
+    }
+   
+    if (r->state == Rep::State::kBuffered && r->target_file_size != 0 &&
+          r->data_begin_offset > r->target_file_size) {
+        EnterUnbuffered();
+    }
+    if (ok() && r->state == Rep::State::kUnbuffered) {
+      if (r->IsParallelCompressionEnabled()) {
+          r->pc_rep->curr_block_keys->Clear();
+      } else {
+          r->index_builder->AddIndexEntry(&r->last_key, &(r->kkey), r->pending_handle);
+      }
+    } 
+  }
 }
 
 void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
@@ -893,8 +929,13 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
 
     auto should_flush = r->flush_block_policy->Update(key, value);
     if (should_flush) {
+        r->first_key_in_next_block = &key;
+        AppendRep(key);
+    }
+/*  if (should_flush) {
       assert(!r->data_block.empty());
       r->first_key_in_next_block = &key;
+
       Flush();
 
       if (r->state == Rep::State::kBuffered && r->target_file_size != 0 &&
@@ -918,8 +959,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
                                           r->pending_handle);
         }
       }
-    }
-
+    }*/
     // Note: PartitionedFilterBlockBuilder requires key being added to filter
     // builder after being added to index builder.
     if (r->state == Rep::State::kUnbuffered) {
@@ -974,6 +1014,29 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   } else if (value_type == kTypeMerge) {
     r->props.num_merge_operands++;
   }
+}
+
+void BlockBasedTableBuilder::AppendRep(const Slice& key) {
+    
+  Rep* r = new Rep(rep_->ioptions, rep_->moptions, 
+          rep_->table_options, 
+          rep_->internal_comparator, 
+          this->int_tbl_prop_collector_factories_,
+          rep_->column_family_id, rep_->file, 
+          rep_->compression_type, 
+          rep_->sample_for_compression,
+          rep_->compression_opts, this->skip_filters_,
+          rep_->level_at_creation, rep_->column_family_name,
+          rep_->creation_time, rep_->oldest_key_time,
+          rep_->target_file_size, rep_->file_creation_time,
+          rep_->db_id, rep_->db_session_id);
+  r->state = rep_->state;
+  r->data_block = rep_->data_block;
+  //r->pc_rep = rep_->pc_rep;
+  r->pending_handle = rep_->pending_handle;
+  r->first_key_in_next_block = rep_->first_key_in_next_block;
+  r->kkey = key;
+  reps_to_flush.push_back(r);
 }
 
 void BlockBasedTableBuilder::Flush() {
@@ -1706,6 +1769,8 @@ void BlockBasedTableBuilder::EnterUnbuffered() {
 }
 
 Status BlockBasedTableBuilder::Finish() {
+
+  FlushAllRep();  
   Rep* r = rep_;
   assert(r->state != Rep::State::kClosed);
   bool empty_data_block = r->data_block.empty();

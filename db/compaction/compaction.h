@@ -88,6 +88,7 @@ class Compaction {
 
   ~Compaction();
 
+  void PreCalculateMinMaxKey(Slice&, Slice&, const InternalKeyComparator* );
   // Returns the level associated to the specified compaction input level.
   // If compaction_input_level is not specified, then input_level is set to 0.
   int level(size_t compaction_input_level = 0) const {
@@ -227,6 +228,7 @@ class Compaction {
   // procedure
   const ImmutableCFOptions* immutable_cf_options() const {
     return &immutable_cf_options_;
+
   }
 
   // Return the MutableCFOptions that should be used throughout the compaction

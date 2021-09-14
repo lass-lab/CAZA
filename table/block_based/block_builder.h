@@ -19,8 +19,22 @@ namespace ROCKSDB_NAMESPACE {
 
 class BlockBuilder {
  public:
-  BlockBuilder(const BlockBuilder&) = delete;
-  void operator=(const BlockBuilder&) = delete;
+    
+  BlockBuilder(const BlockBuilder&);
+
+  BlockBuilder& operator=(const BlockBuilder& bb) {
+  
+      this->block_restart_interval_ = bb.block_restart_interval_;
+      this->use_delta_encoding_ = bb.use_delta_encoding_;
+      this->use_value_delta_encoding_ = bb.use_value_delta_encoding_;
+      this->finished_ = bb.finished_;
+      this->data_block_hash_index_builder_ = bb.data_block_hash_index_builder_;
+      this->restarts_ = bb.restarts_;
+      this->estimate_ = bb.estimate_;
+      this->last_key_ = bb.last_key_;
+      this->counter_ = bb.counter_;
+      return *this;
+  }
 
   explicit BlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
@@ -59,12 +73,12 @@ class BlockBuilder {
   // Return true iff no entries have been added since the last Reset()
   bool empty() const { return buffer_.empty(); }
 
- private:
-  const int block_restart_interval_;
+// private:
+  /*const*/ int block_restart_interval_;
   // TODO(myabandeh): put it into a separate IndexBlockBuilder
-  const bool use_delta_encoding_;
+  /*const*/ bool use_delta_encoding_;
   // Refer to BlockIter::DecodeCurrentValue for format of delta encoded values
-  const bool use_value_delta_encoding_;
+  /*const*/ bool use_value_delta_encoding_;
 
   std::string buffer_;              // Destination buffer
   std::vector<uint32_t> restarts_;  // Restart points

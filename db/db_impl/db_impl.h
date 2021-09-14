@@ -18,6 +18,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <string>
+#include <iostream>
+
+#include <mutex>
+#include <chrono>
 
 #include "db/column_family.h"
 #include "db/compaction/compaction_job.h"
@@ -84,6 +89,23 @@ struct JobContext;
 struct ExternalSstFileInfo;
 struct MemTableInfo;
 
+struct FDForZoneFile{
+    uint64_t fno_;
+    Slice smallest_;
+    Slice largest_;
+    int level_;
+
+    explicit FDForZoneFile(uint64_t fn, Slice smallest, Slice largest, int level):
+        fno_(fn),
+        smallest_(smallest),
+        largest_(largest),
+        level_(level){}
+
+    bool operator < (const FDForZoneFile& var) const {
+        return fno_ < var.fno_;
+    }
+};
+
 // Class to maintain directories for all database paths other than main one.
 class Directories {
  public:
@@ -138,7 +160,65 @@ class DBImpl : public DB {
   void operator=(const DBImpl&) = delete;
 
   virtual ~DBImpl();
+  
+  //Only Used for ZenFS Experiment
+  std::mutex compaction_input_mutex_;
+  std::ofstream lsm_ofile;
+  std::mutex lsm_ofile_mutex_;
+  std::chrono::time_point<std::chrono::system_clock> start_t_;
 
+  std::mutex fd_mutex_;
+  std::map<int, std::vector<uint64_t>> compaction_inputs_;
+  std::map<uint64_t, FDForZoneFile*> fd_for_zone_file_;
+  void printCompactionHistory();
+  void InsertCompactionFileList(const int &job_id, const std::vector<CompactionInputFiles> *inputs);
+  void LogLSMStateHistoryWithZoneState();
+  bool InsertFDForZoneFile(uint64_t, FDForZoneFile*);
+  void CloseLSMHistoryFile() { 
+    lsm_ofile_mutex_.lock();
+    lsm_ofile.close();
+    lsm_ofile_mutex_.unlock();
+  }
+  unsigned long long GetTimeStamp();
+  //Only Used for ZenFS Experiment
+  const Comparator* GetUserComp(){
+  //Only Used for ZenFS Experiment
+  const Comparator* user_cmp = versions_.get()->GetColumnFamilySet()->GetDefault()->current()->User_comparator();
+    
+    assert(user_cmp);
+    return user_cmp;
+  }
+  //Only Used for ZenFS Experiment
+  void GetFileMetaForZFS(const std::string filename, int& level, Slice& smallest, Slice& largest) {
+      
+      assert(filename.substr(filename.length() -3 ) == "sst");
+      std::string fname = filename.substr(filename.length() - 10);
+      std::cerr << fname.substr(0,6) << std::endl;
+      
+      uint64_t fileno = stoul(fname.substr(0,6));
+      
+      for(auto* cfd : *versions_->GetColumnFamilySet()) {
+          
+          auto* version = cfd->current(); 
+          auto* sti = version->storage_info();
+          
+          for(int i = 0; i < sti->num_levels(); i++){
+              
+              for(auto* f : sti->LevelFiles(i)){
+
+                  if(fileno == f->fd.GetNumber()){
+                    
+                    level = i;
+                    smallest = f->smallest.user_key();
+                    largest = f->largest.user_key();
+                  
+                  }
+              }
+
+          }
+      }
+  }
+ 
   // ---- Implementations of the DB interface ----
 
   using DB::Resume;

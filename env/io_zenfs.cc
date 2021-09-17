@@ -164,9 +164,6 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       filename_(filename),
       file_id_(file_id),
       nr_synced_extents_(0),
-      smallest(nullptr),
-      largest(nullptr),
-      level(-1),
       is_appending_(false),
       marked_for_del_(false),
       should_flush_full_buffer_(false){}
@@ -657,6 +654,12 @@ void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
 
 void ZonedWritableFile::ShouldFlushFullBuffer() {
   zoneFile_->should_flush_full_buffer_ = true;
+}
+
+void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l, const int level) {
+  zoneFile_->smallest_.DecodeFrom(s);
+  zoneFile_->largest_.DecodeFrom(l);
+  zoneFile_->level_ = level;
 }
 
 IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,

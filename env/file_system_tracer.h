@@ -339,6 +339,9 @@ class FSWritableFilePtr {
   void ShouldFlushFullBuffer() {
     fs_->ShouldFlushFullBuffer();
   }
+  void SetMinMaxKeyAndLevel(const Slice& smallest, const Slice& largest, const int level) {
+    fs_->SetMinMaxKeyAndLevel(smallest, largest, level);
+  }
 
  private:
   std::unique_ptr<FSWritableFile> fs_;

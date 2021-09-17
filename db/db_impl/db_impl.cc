@@ -285,16 +285,6 @@ unsigned long long DBImpl::GetTimeStamp(){
 
     return elapsed_;
 }
-bool DBImpl::InsertFDForZoneFile(uint64_t fno, FDForZoneFile* fd_for_zone_file) {
-  fd_mutex_.lock();
-  auto ret = fd_for_zone_file_.insert(std::pair<uint64_t, FDForZoneFile*>(fno, fd_for_zone_file));
-  fd_mutex_.unlock();
-  
-  if(!ret.second)
-    std::cerr << "Insert with fno( " << fno <<") failed" <<std::endl;
-  
-  return true;
-}
 
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){

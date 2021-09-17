@@ -22,6 +22,7 @@
 
 #include "rocksdb/file_system.h"
 #include "zbd_zenfs.h"
+#include "db/version_edit.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -71,11 +72,12 @@ class ZoneFile {
   uint32_t nr_synced_extents_;
   /*Append to Zone only After Finish() is called from table builer*/
   std::vector<Buffer*> full_buffer_;
-  Slice smallest;
-  Slice largest;
-  int level;
 
  public:
+  InternalKey smallest_;
+  InternalKey largest_;
+  int level_;
+
   std::atomic<bool> is_appending_;
   std::atomic<bool> marked_for_del_;
   bool should_flush_full_buffer_;
@@ -172,6 +174,7 @@ class ZonedWritableFile : public FSWritableFile {
   }
   void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
   void ShouldFlushFullBuffer();
+  void SetMinMaxKeyAndLevel(const Slice&, const Slice&, const int);
  private:
   IOStatus BufferedWrite(const Slice& data);
   IOStatus FlushBuffer();

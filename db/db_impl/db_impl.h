@@ -89,23 +89,6 @@ struct JobContext;
 struct ExternalSstFileInfo;
 struct MemTableInfo;
 
-struct FDForZoneFile{
-    uint64_t fno_;
-    Slice smallest_;
-    Slice largest_;
-    int level_;
-
-    explicit FDForZoneFile(uint64_t fn, Slice smallest, Slice largest, int level):
-        fno_(fn),
-        smallest_(smallest),
-        largest_(largest),
-        level_(level){}
-
-    bool operator < (const FDForZoneFile& var) const {
-        return fno_ < var.fno_;
-    }
-};
-
 // Class to maintain directories for all database paths other than main one.
 class Directories {
  public:
@@ -169,11 +152,9 @@ class DBImpl : public DB {
 
   std::mutex fd_mutex_;
   std::map<int, std::vector<uint64_t>> compaction_inputs_;
-  std::map<uint64_t, FDForZoneFile*> fd_for_zone_file_;
   void printCompactionHistory();
   void InsertCompactionFileList(const int &job_id, const std::vector<CompactionInputFiles> *inputs);
   void LogLSMStateHistoryWithZoneState();
-  bool InsertFDForZoneFile(uint64_t, FDForZoneFile*);
   void CloseLSMHistoryFile() { 
     lsm_ofile_mutex_.lock();
     lsm_ofile.close();

@@ -236,7 +236,10 @@ class WritableFileWriter {
   std::string GetFileChecksum();
 
   const char* GetFileChecksumFuncName() const;
-  void ShouldFlushFullBuffer() { return writable_file_->ShouldFlushFullBuffer(); };
+  void ShouldFlushFullBuffer() { writable_file_->ShouldFlushFullBuffer(); };
+  void SetMinMaxKeyAndLevel(const Slice& s, const Slice& l, const int level) { 
+      writable_file_->SetMinMaxKeyAndLevel(s, l, level); 
+  };
  private:
   // Used when os buffering is OFF and we are writing
   // DMA such as in Direct I/O mode

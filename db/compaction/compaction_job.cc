@@ -1294,7 +1294,7 @@ Status CompactionJob::FinishCompactionOutputFile(
 
   uint64_t output_number = sub_compact->current_output()->meta.fd.GetNumber();
   assert(output_number != 0);
-
+  
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
   const Comparator* ucmp = cfd->user_comparator();
   std::string file_checksum = kUnknownFileChecksum;

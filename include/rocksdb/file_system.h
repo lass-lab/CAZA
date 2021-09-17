@@ -738,6 +738,13 @@ class FSWritableFile {
 
   virtual ~FSWritableFile() {}
   virtual void ShouldFlushFullBuffer() {}; 
+  virtual void SetMinMaxKeyAndLevel(const Slice& s, const Slice& l, const int level) {
+      Slice a=s; 
+      Slice m=l;
+      a = m;
+      int c = level;
+      c++;
+  };
   // Append data to the end of the file
   // Note: A WriteabelFile object must support either Append or
   // PositionedAppend, so the users cannot mix the two.

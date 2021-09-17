@@ -194,26 +194,6 @@ Status DBImpl::FlushMemTableToOutputFile(
   } else {
     TEST_SYNC_POINT("DBImpl::SyncClosedLogs:Skip");
   }
-/*
-  autovector<MemTable*> mems = flush_job.GetMemTables();
-  std::vector<InternalIterator*> memtables;
-  std::vector<std::unique_ptr<FragmentedRangeTombstoneIterator>> range_del_iters;
-  ReadOptions ro;
-  ro.total_order_seek = true;
-  Arena arenaa;
-  Slice smallest, largest;
-
-  assert(flush_job.get_mems_size() == 1);
-  memtables.push_back(mems[0]->NewIterator(ro, &arenaa));
-
-  iter.get->SeekToFirst();
-  smallest = iter.get()->key();
-  iter.get->SeekToLast();
-  largest = iter.get()->key();
-  uint64_t f_fno = flush_job.GetMeta()->fd.GetNumber();*/
-//  FDForZoneFile* fd_for_zone = new FDForZoneFile(f_fno, smallest, largest, 0/*outpue level*/);
-//  bool rettt = InsertFDForZoneFile(f_fno, fd_for_zone);
-//  assert(rettt);
   // Within flush_job.Run, rocksdb may call event listener to notify
   // file creation and deletion.
   //

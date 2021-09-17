@@ -280,6 +280,9 @@ struct BlockBasedTableBuilder::Rep {
   std::vector<std::unique_ptr<UncompressionContext>> verify_ctxs;
   std::unique_ptr<UncompressionDict> verify_dict;
 
+  Slice smallest; //smallest key in current table
+  Slice largest; //largest key in current table
+
   size_t data_begin_offset = 0;
   Slice kkey;
   TableProperties props;
@@ -885,6 +888,12 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
   if (!ok()) return;
+
+  if (r->smallest.size()==0) {
+    r->smallest = key;
+  }
+  r->largest = key;
+
   ValueType value_type = ExtractValueType(key);
   if (IsValueType(value_type)) {
 #ifndef NDEBUG
@@ -1730,6 +1739,7 @@ Status BlockBasedTableBuilder::Finish() {
     }
   }
   r->file->ShouldFlushFullBuffer();
+  r->file->SetMinMaxKeyAndLevel(r->smallest, r->largest, r->level_at_creation);
   // Write meta blocks, metaindex block and footer in the following order.
   //    1. [meta block: filter]
   //    2. [meta block: index]

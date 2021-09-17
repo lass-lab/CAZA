@@ -164,8 +164,12 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       filename_(filename),
       file_id_(file_id),
       nr_synced_extents_(0),
+      smallest(nullptr),
+      largest(nullptr),
+      level(-1),
       is_appending_(false),
-      marked_for_del_(false){}
+      marked_for_del_(false),
+      should_flush_full_buffer_(false){}
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -320,9 +324,80 @@ void ZoneFile::PushExtent() {
   active_zone_->is_append.store(false);
 }
 
+IOStatus ZoneFile::FullBuffer(void* data, int data_size, int valid_size) {
+
+    Buffer * buf = new Buffer(data, data_size, valid_size);
+    full_buffer_.push_back(buf);
+
+    return IOStatus::OK();
+}
+
+/* Assumes that data and size are block aligned */
+IOStatus ZoneFile::AppendBuffer(void* data, int data_size, int valid_size) {
+
+  uint32_t left = data_size;
+  uint32_t wr_size, offset = 0;
+  IOStatus s;
+
+  if (active_zone_ == NULL) {
+    active_zone_ = zbd_->AllocateZone(lifetime_);
+
+    if(!active_zone_) {
+       return IOStatus::NoSpace("Zone allocation failure\n");
+    }
+    active_zone_->is_append.store(true);   
+    extent_start_ = active_zone_->wp_;
+    extent_filepos_ = fileSize;
+  }
+
+  while (left) {
+    if (active_zone_->capacity_ == 0) {
+      PushExtent(); 
+      active_zone_->CloseWR();
+      active_zone_->is_append.store(false);
+     
+      active_zone_ = zbd_->AllocateZone(lifetime_);
+      if(!active_zone_) {
+         return IOStatus::NoSpace("Zone allocation failure\n");
+      }
+      active_zone_->is_append.store(true);
+      extent_start_ = active_zone_->wp_;
+      extent_filepos_ = fileSize;
+    }
+
+    wr_size = left;
+    if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
+    s = active_zone_->Append((char*)data + offset, wr_size);
+
+    if (!s.ok()){ 
+        return s;
+    }
+
+    fileSize += wr_size;
+    left -= wr_size;
+    offset += wr_size;
+  }
+  fileSize -= (data_size - valid_size);
+  return IOStatus::OK();
+}
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
 
+  if (filename_.substr(filename_.size() - 3) == "sst") {
+      if(should_flush_full_buffer_) {
+        if(!full_buffer_.empty()) {
+          for(const auto& b : full_buffer_) {
+            AppendBuffer(b->buffer_, b->buffer_size_, b->valid_size_);
+          }
+          for(auto b : full_buffer_) {
+            delete b;
+          }
+          full_buffer_.clear();
+        }
+      } else {
+        return FullBuffer(data, data_size, valid_size);
+      }
+  } 
   uint32_t left = data_size;
   uint32_t wr_size, offset = 0;
   IOStatus s;
@@ -539,6 +614,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
                                    const IOOptions& /*options*/,
                                    IODebugContext* /*dbg*/) {
   IOStatus s;
+  //check current sst output is finished or not
 
   zoneFile_->is_appending_.store(true);
   if (buffered) {
@@ -577,6 +653,10 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
 
 void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
   zoneFile_->SetWriteLifeTimeHint(hint);
+}
+
+void ZonedWritableFile::ShouldFlushFullBuffer() {
+  zoneFile_->should_flush_full_buffer_ = true;
 }
 
 IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,

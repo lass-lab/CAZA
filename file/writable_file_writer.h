@@ -236,7 +236,7 @@ class WritableFileWriter {
   std::string GetFileChecksum();
 
   const char* GetFileChecksumFuncName() const;
-
+  void ShouldFlushFullBuffer() { return writable_file_->ShouldFlushFullBuffer(); };
  private:
   // Used when os buffering is OFF and we are writing
   // DMA such as in Direct I/O mode

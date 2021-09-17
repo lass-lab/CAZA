@@ -737,7 +737,7 @@ class FSWritableFile {
         strict_bytes_per_sync_(options.strict_bytes_per_sync) {}
 
   virtual ~FSWritableFile() {}
-  
+  virtual void ShouldFlushFullBuffer() {}; 
   // Append data to the end of the file
   // Note: A WriteabelFile object must support either Append or
   // PositionedAppend, so the users cannot mix the two.

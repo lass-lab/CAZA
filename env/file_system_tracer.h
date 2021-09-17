@@ -336,6 +336,9 @@ class FSWritableFilePtr {
     fs_tracer_.reset();
     io_tracer_ = nullptr;
   }
+  void ShouldFlushFullBuffer() {
+    fs_->ShouldFlushFullBuffer();
+  }
 
  private:
   std::unique_ptr<FSWritableFile> fs_;

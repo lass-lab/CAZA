@@ -68,19 +68,6 @@ BlockBuilder::BlockBuilder(
   estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
 }
 
-BlockBuilder::BlockBuilder(const BlockBuilder& bb)
-    :block_restart_interval_(bb.block_restart_interval_),
-     use_delta_encoding_(bb.use_delta_encoding_),
-     use_value_delta_encoding_(bb.use_value_delta_encoding_){
-    finished_ = bb.finished_;
-    data_block_hash_index_builder_ = bb.data_block_hash_index_builder_;
-    buffer_ = bb.buffer_;
-    restarts_ = bb.restarts_;
-    estimate_ = bb.estimate_;
-    last_key_ = bb.last_key_;
-    counter_ = bb.counter_;
-}
-
 void BlockBuilder::Reset() {
   buffer_.clear();
   restarts_.clear();

@@ -881,40 +881,6 @@ BlockBasedTableBuilder::~BlockBasedTableBuilder() {
   for(auto r : reps_to_flush) delete r;
 }
 
-void BlockBasedTableBuilder::FlushAllRep(){
-
-  for(const auto& cur_rep : reps_to_flush) {
-    Rep* r = cur_rep;
-    assert(cur_rep->state != Rep::State::kClosed);
-    if (!ok()) return;
-    if (r->data_block.empty()) return;
-    if (r->IsParallelCompressionEnabled() &&
-        r->state == Rep::State::kUnbuffered) {
-      r->data_block.Finish();
-      ParallelCompressionRep::BlockRep* block_rep = r->pc_rep->PrepareBlock(
-          r->compression_type, r->first_key_in_next_block, &(r->data_block));
-      assert(block_rep != nullptr);
-      r->pc_rep->file_size_estimator.EmitBlock(block_rep->data->size(), 
-                                               r->get_offset());
-      r->pc_rep->EmitBlock(block_rep);
-    } else {
-      WriteBlock(&r->data_block, &r->pending_handle, true /* is_data_block */);
-    }
-   
-    if (r->state == Rep::State::kBuffered && r->target_file_size != 0 &&
-          r->data_begin_offset > r->target_file_size) {
-        EnterUnbuffered();
-    }
-    if (ok() && r->state == Rep::State::kUnbuffered) {
-      if (r->IsParallelCompressionEnabled()) {
-          r->pc_rep->curr_block_keys->Clear();
-      } else {
-          r->index_builder->AddIndexEntry(&r->last_key, &(r->kkey), r->pending_handle);
-      }
-    } 
-  }
-}
-
 void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
@@ -929,15 +895,8 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
 
     auto should_flush = r->flush_block_policy->Update(key, value);
     if (should_flush) {
-        r->first_key_in_next_block = &key;
-        AppendRep(key);
-    }
-/*  if (should_flush) {
-      assert(!r->data_block.empty());
       r->first_key_in_next_block = &key;
-
       Flush();
-
       if (r->state == Rep::State::kBuffered && r->target_file_size != 0 &&
           r->data_begin_offset > r->target_file_size) {
         EnterUnbuffered();
@@ -959,7 +918,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
                                           r->pending_handle);
         }
       }
-    }*/
+    }
     // Note: PartitionedFilterBlockBuilder requires key being added to filter
     // builder after being added to index builder.
     if (r->state == Rep::State::kUnbuffered) {
@@ -1016,29 +975,6 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   }
 }
 
-void BlockBasedTableBuilder::AppendRep(const Slice& key) {
-    
-  Rep* r = new Rep(rep_->ioptions, rep_->moptions, 
-          rep_->table_options, 
-          rep_->internal_comparator, 
-          this->int_tbl_prop_collector_factories_,
-          rep_->column_family_id, rep_->file, 
-          rep_->compression_type, 
-          rep_->sample_for_compression,
-          rep_->compression_opts, this->skip_filters_,
-          rep_->level_at_creation, rep_->column_family_name,
-          rep_->creation_time, rep_->oldest_key_time,
-          rep_->target_file_size, rep_->file_creation_time,
-          rep_->db_id, rep_->db_session_id);
-  r->state = rep_->state;
-  r->data_block = rep_->data_block;
-  //r->pc_rep = rep_->pc_rep;
-  r->pending_handle = rep_->pending_handle;
-  r->first_key_in_next_block = rep_->first_key_in_next_block;
-  r->kkey = key;
-  reps_to_flush.push_back(r);
-}
-
 void BlockBasedTableBuilder::Flush() {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
@@ -1061,8 +997,8 @@ void BlockBasedTableBuilder::Flush() {
 void BlockBasedTableBuilder::WriteBlock(BlockBuilder* block,
                                         BlockHandle* handle,
                                         bool is_data_block) {
-  WriteBlock(block->Finish(), handle, is_data_block);
-  block->Reset();
+    WriteBlock(block->Finish(), handle, is_data_block);
+    block->Reset();
 }
 
 void BlockBasedTableBuilder::WriteBlock(const Slice& raw_block_contents,
@@ -1770,7 +1706,6 @@ void BlockBasedTableBuilder::EnterUnbuffered() {
 
 Status BlockBasedTableBuilder::Finish() {
 
-  FlushAllRep();  
   Rep* r = rep_;
   assert(r->state != Rep::State::kClosed);
   bool empty_data_block = r->data_block.empty();
@@ -1794,7 +1729,7 @@ Status BlockBasedTableBuilder::Finish() {
           &r->last_key, nullptr /* no next data block */, r->pending_handle);
     }
   }
-
+  r->file->ShouldFlushFullBuffer();
   // Write meta blocks, metaindex block and footer in the following order.
   //    1. [meta block: filter]
   //    2. [meta block: index]

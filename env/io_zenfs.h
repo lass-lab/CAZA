@@ -25,6 +25,26 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+class Buffer {
+ public:
+  int buffer_size_;
+  int valid_size_;
+  void* buffer_;
+
+  explicit Buffer(void* data, int data_size, int valid_size)
+      :buffer_size_(data_size),
+       valid_size_(valid_size)
+       {
+          buffer_ = new char[data_size];
+          memcpy(buffer_, data, buffer_size_);
+       };
+
+  ~Buffer(){
+    delete (char*)buffer_;
+  }
+
+};
+
 class ZoneExtent {
  public:
   uint64_t start_;
@@ -49,10 +69,17 @@ class ZoneFile {
   std::string filename_;
   uint64_t file_id_;
   uint32_t nr_synced_extents_;
+  /*Append to Zone only After Finish() is called from table builer*/
+  std::vector<Buffer*> full_buffer_;
+  Slice smallest;
+  Slice largest;
+  int level;
 
  public:
   std::atomic<bool> is_appending_;
   std::atomic<bool> marked_for_del_;
+  bool should_flush_full_buffer_;
+  IOStatus FullBuffer(void*, int, int);
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
                     uint64_t file_id_);
@@ -60,6 +87,7 @@ class ZoneFile {
   virtual ~ZoneFile();
 
   void CloseWR();
+  IOStatus AppendBuffer(void* data, int data_size, int valid_size);
   IOStatus Append(void* data, int data_size, int valid_size);
   IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime);
   std::string GetFilename();
@@ -143,7 +171,7 @@ class ZonedWritableFile : public FSWritableFile {
     return zoneFile_->GetBlockSize();
   }
   void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
-
+  void ShouldFlushFullBuffer();
  private:
   IOStatus BufferedWrite(const Slice& data);
   IOStatus FlushBuffer();

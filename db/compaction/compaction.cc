@@ -298,22 +298,18 @@ bool Compaction::InputCompressionMatchesOutput() const {
 void Compaction::PreCalculateMinMaxKey(Slice& s_key, Slice& l_key, const InternalKeyComparator* icmp) {
 
   InternalKey s, l;
-
-  for(const CompactionInputFiles& f : inputs_){
-    
-    for(const FileMetaData* fm : f.files){
-    
-      if (s.rep()->empty() && l.rep()->empty()) {
+  for (const CompactionInputFiles& f : inputs_) {
+   for (const FileMetaData* fm : f.files) {
+    if (s.rep()->empty() && l.rep()->empty()) {
+      s = fm->smallest;
+      l = fm->largest;
+    } else {
+      if (icmp->Compare(fm->smallest, s) < 0)
         s = fm->smallest;
+      if (icmp->Compare(l, fm->largest) < 0)
         l = fm->largest;
-            
-      } else {
-          if (icmp->Compare(fm->smallest, s) < 0)
-            s = fm->smallest;
-          if (icmp->Compare(l, fm->largest) < 0)
-            l = fm->largest;
-      }
     }
+   }
   }
   assert(!(s.rep()->empty()) && !(l.rep()->empty()));
   s_key = s.user_key(); 

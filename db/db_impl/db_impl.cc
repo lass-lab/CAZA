@@ -345,8 +345,57 @@ void DBImpl::LogLSMStateHistoryWithZoneState() {
             lsm_ofile<<std::endl;
         }
     }
-
     lsm_ofile_mutex_.unlock();
+}
+
+void DBImpl::FindClosestFilesWithSameLevel(const int level, std::vector<uint64_t>& fno_list) {
+
+  auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  auto files = vstorage->LevelFiles(level);
+  
+  for (const auto f : files) {
+    uint64_t fno = f->fd.GetNumber();
+    fno_list.push_back(fno);
+  }
+
+}
+
+void DBImpl::SameLevelFileList(const int level, std::vector<uint64_t>& fno_list){
+
+  auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+
+  auto files = vstorage->LevelFiles(level);
+  
+  for (const auto f : files) {
+    uint64_t fno = f->fd.GetNumber();
+    fno_list.push_back(fno);
+  }
+
+}
+
+void DBImpl::AdjacentFileList(const InternalKey& s, const InternalKey& l, const int level, std::vector<uint64_t>& fno_list){
+
+  auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles output_level_inputs;
+  CompactionInputFiles output_level_inputs_for_l01;
+
+  vstorage->GetOverlappingInputs(level+1, &s, &l, &output_level_inputs.files);
+  if (level == 1) {
+    vstorage->GetOverlappingInputs(0, &s, &l, &output_level_inputs_for_l01.files);
+  } else if (level == 0){
+    vstorage->GetOverlappingInputs(1, &s, &l, &output_level_inputs_for_l01.files);
+  }
+  for (const auto& f : output_level_inputs.files) {
+    uint64_t fno = f->fd.GetNumber();
+    fno_list.push_back(fno);
+  }
+ 
+  if (level == 0 || level == 1) {
+    for (const auto& f : output_level_inputs_for_l01.files) {
+      uint64_t fno = f->fd.GetNumber();
+      fno_list.push_back(fno);
+    }
+  }
 }
 
 Status DBImpl::Resume() {

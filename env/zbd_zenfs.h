@@ -23,13 +23,13 @@
 #include <vector>
 #include <queue>
 #include <functional>
+#include <map>
 
 #include <iostream>
-
 #include "db/db_impl/db_impl.h"
 #include "rocksdb/env.h"
 #include "rocksdb/io_status.h"
-//#include "env/io_zenfs.h"
+#include "db/version_edit.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -42,54 +42,89 @@ class ZoneExtent;
 //(ZC)::class and struct added for Zone Cleaning 
 struct ZoneExtentInfo {
 
-    ZoneExtent* extent_;
-    ZoneFile* zone_file_;
-    bool valid_;
-    uint32_t length_;
-    uint64_t start_;
-    Zone* zone_;
-    std::string fname_;
-    Env::WriteLifeTimeHint lt_;
+  ZoneExtent* extent_;
+  ZoneFile* zone_file_;
+  bool valid_;
+  uint32_t length_;
+  uint64_t start_;
+  Zone* zone_;
+  std::string fname_;
+  Env::WriteLifeTimeHint lt_;
+  int level_;
 
-    explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, uint64_t length, uint64_t start, Zone* zone, std::string fname, Env::WriteLifeTimeHint lt) 
-        : extent_(extent), 
-          zone_file_(zone_file), 
-          valid_(valid), 
-          length_(length), 
-          start_(start), 
-          zone_(zone), 
-          fname_(fname), 
-          lt_(lt){ };
-    
-    void invalidate() {
-        assert(extent_ != nullptr);
-        if(!valid_){
-            fprintf(stderr, "Try to invalidate invalid extent!\n");
-        }       
-        valid_ = false;
-    };
+  explicit ZoneExtentInfo(ZoneExtent* extent, ZoneFile* zone_file, bool valid, 
+                          uint64_t length, uint64_t start, Zone* zone, std::string fname, 
+                          Env::WriteLifeTimeHint lt, int level)
+      : extent_(extent),
+        zone_file_(zone_file), 
+        valid_(valid), 
+        length_(length), 
+        start_(start), 
+        zone_(zone), 
+        fname_(fname), 
+        lt_(lt),
+        level_(level){ };
+  
+  void invalidate() {
+    assert(extent_ != nullptr);
+    if (!valid_) {
+      fprintf(stderr, "Try to invalidate invalid extent!\n");
+    }       
+    valid_ = false;
+  };
 };
 
 class GCVictimZone {
-    public:
 
-     GCVictimZone(Zone* zone, uint64_t invalid_bytes)
-         : zone_(zone),
-           invalid_bytes_(invalid_bytes){};
+  public:
+   GCVictimZone(Zone* zone, uint64_t invalid_bytes)
+    : zone_(zone),
+      invalid_bytes_(invalid_bytes){};
 
-     uint64_t get_inval_bytes() const {return invalid_bytes_;};
-     Zone * get_zone_ptr() const {return zone_;};
+  uint64_t get_inval_bytes() const {return invalid_bytes_;};
+  Zone * get_zone_ptr() const {return zone_;};
 
-    private:
-     Zone *zone_;
-     uint64_t invalid_bytes_;
+  private:
+    Zone *zone_;
+    uint64_t invalid_bytes_;
 };
 
 class InvalComp{
-    public:
-        bool operator()(const GCVictimZone *a, const GCVictimZone* b){
-            return a->get_inval_bytes() < b->get_inval_bytes();
-        };
+  public:
+   bool operator()(const GCVictimZone *a, const GCVictimZone* b){
+    return a->get_inval_bytes() < b->get_inval_bytes();
+   };
+};
+
+class AllocVictimZone {
+
+  public:
+   AllocVictimZone(Zone* zone, uint64_t invalid_bytes, uint64_t valid_bytes)
+    : zone_(zone),
+      invalid_bytes_(invalid_bytes),
+      valid_bytes_(valid_bytes){};
+
+  uint64_t get_inval_bytes() const {return invalid_bytes_;};
+  uint64_t get_valid_bytes() const {return valid_bytes_;};
+  Zone * get_zone_ptr() const {return zone_;};
+
+  private:
+    Zone *zone_;
+    uint64_t invalid_bytes_;
+    uint64_t valid_bytes_;
+};
+
+class InvalValComp{
+  public:
+   bool operator()(const AllocVictimZone *a, const AllocVictimZone* b) {
+    if (a->get_inval_bytes() > b->get_inval_bytes()) {
+      /*Give more priority zone with more invalid data */
+      return true; 
+    } else if (a->get_inval_bytes() == b->get_inval_bytes()) {
+      return a->get_valid_bytes() <= b->get_valid_bytes();
+    } 
+    return false;
+   };
 };
 
 class Zone {
@@ -99,7 +134,7 @@ class Zone {
   explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z, const uint32_t id);
 
   std::mutex zone_del_mtx_;
-  const uint32_t zone_id_; /* increment from 0 */
+  const int zone_id_; /* increment from 0 */
   uint64_t start_;
   uint64_t capacity_; /* remaining capacity */
   uint64_t max_capacity_;
@@ -138,6 +173,7 @@ class Zone {
 class ZonedBlockDevice {
  private:
   std::priority_queue<GCVictimZone *, std::vector<GCVictimZone *>, InvalComp > gc_queue_;
+  std::priority_queue<AllocVictimZone *, std::vector<AllocVictimZone *>, InvalValComp > allocate_queue_;
   std::string filename_;
   uint32_t block_sz_;
   uint32_t zone_sz_;
@@ -161,6 +197,7 @@ class ZonedBlockDevice {
 
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
+ 
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
@@ -170,8 +207,12 @@ class ZonedBlockDevice {
   std::vector<ZoneFile *> del_pending;
   std::atomic<bool> zc_in_progress_;
   std::mutex append_mtx_;
-
+  std::mutex sst_zone_mtx_;
   std::atomic<unsigned long long> WR_DATA;
+
+  std::map<uint64_t, ZoneFile*> files_;
+  std::map<uint64_t, std::vector<int>> sst_to_zone_;
+  std::map<int, Zone*> id_to_zone_;
 
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
@@ -182,8 +223,13 @@ class ZonedBlockDevice {
   IOStatus Open(bool readonly = false);
 
   Zone *GetIOZone(uint64_t offset);
-
-  Zone *AllocateZone(Env::WriteLifeTimeHint lifetime);
+  void SortZone();
+  //void PickZoneWithCompactionVictim(std::vector<Zone*>&);
+  void PickZoneWithOnlyInvalid(std::vector<Zone*>&);
+  Zone * AllocateMostL0L1Files(const std::set<int>&);
+  void SameLevelFileList(const int, std::vector<uint64_t>&);
+  void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&);
+  Zone *AllocateZone(InternalKey, InternalKey, int, Env::WriteLifeTimeHint lifetime, uint64_t);
   Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones, Env::WriteLifeTimeHint lifetime);
   Zone *AllocateMetaZone();
 

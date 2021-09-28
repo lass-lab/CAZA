@@ -30,7 +30,7 @@ class Buffer {
  public:
   int buffer_size_;
   int valid_size_;
-  void* buffer_;
+  char* buffer_;
 
   explicit Buffer(void* data, int data_size, int valid_size)
       :buffer_size_(data_size),
@@ -81,6 +81,8 @@ class ZoneFile {
   std::atomic<bool> is_appending_;
   std::atomic<bool> marked_for_del_;
   bool should_flush_full_buffer_;
+  bool is_sst_;
+  uint64_t fno_;
   IOStatus FullBuffer(void*, int, int);
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
@@ -89,7 +91,7 @@ class ZoneFile {
   virtual ~ZoneFile();
 
   void CloseWR();
-  IOStatus AppendBuffer(void* data, int data_size, int valid_size);
+  IOStatus AppendBuffer();
   IOStatus Append(void* data, int data_size, int valid_size);
   IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime);
   std::string GetFilename();

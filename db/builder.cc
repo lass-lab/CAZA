@@ -40,7 +40,7 @@
 #include "util/stop_watch.h"
 
 #include "env/exp.h"
-
+#include <iostream>
 namespace ROCKSDB_NAMESPACE {
 
 class TableFactory;
@@ -322,7 +322,6 @@ Status BuildTable(
   if (!iter->status().ok()) {
     s = iter->status();
   }
-
   if (!s.ok() || meta->fd.GetFileSize() == 0) {
     TEST_SYNC_POINT("BuildTable:BeforeDeleteFile");
 

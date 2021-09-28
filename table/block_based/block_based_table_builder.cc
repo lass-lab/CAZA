@@ -1738,8 +1738,8 @@ Status BlockBasedTableBuilder::Finish() {
           &r->last_key, nullptr /* no next data block */, r->pending_handle);
     }
   }
-  r->file->ShouldFlushFullBuffer();
-  r->file->SetMinMaxKeyAndLevel(r->smallest, r->largest, r->level_at_creation);
+  //r->file->ShouldFlushFullBuffer();
+  //r->file->SetMinMaxKeyAndLevel(r->smallest, r->largest, r->level_at_creation);
   // Write meta blocks, metaindex block and footer in the following order.
   //    1. [meta block: filter]
   //    2. [meta block: index]
@@ -1762,6 +1762,10 @@ Status BlockBasedTableBuilder::Finish() {
   }
   if (ok()) {
     WriteFooter(metaindex_block_handle, index_block_handle);
+  }
+  if (r->file->file_name().substr(r->file->file_name().size() -3) == "sst") {
+//    r->file->ShouldFlushFullBuffer();
+    r->file->SetMinMaxKeyAndLevel(r->smallest, r->largest, r->level_at_creation);
   }
   r->state = Rep::State::kClosed;
   r->SetStatus(r->CopyIOStatus());

@@ -199,9 +199,13 @@ class DBImpl : public DB {
           }
       }
   }
- 
-  // ---- Implementations of the DB interface ----
+  void FindClosestFilesWithSameLevel(const int, std::vector<uint64_t>&); 
 
+  void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&); 
+
+  void SameLevelFileList(const int, std::vector<uint64_t>&); 
+
+  // ---- Implementations of the DB interface ----
   using DB::Resume;
   virtual Status Resume() override;
 

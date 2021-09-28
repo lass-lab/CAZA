@@ -115,7 +115,7 @@ Status ZoneFile::DecodeFrom(Slice* input) {
         extent->zone_->used_capacity_ += extent->length_;
         extents_.push_back(extent);
         fprintf(stderr, "Push Extent info in ZoneFile::DecodeFrom\n");
-        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_,extent->start_, extent->zone_, filename_, this->lifetime_));
+        extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_,extent->start_, extent->zone_, filename_, this->lifetime_, this->level_));
         break;
       default:
         return Status::Corruption("ZoneFile", "Unexpected tag");
@@ -144,7 +144,7 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
 
     extents_.push_back(new_extent);
     fprintf(stderr, "Push Extent info in ZoneFile::MergeUpdate\n");
-    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, new_extent->start_, new_extent->zone_, filename_, this->lifetime_);
+    ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, new_extent->start_, new_extent->zone_, filename_, this->lifetime_, this->level_);
     zone->PushExtentInfo(new_extent_info);
 
   }
@@ -164,9 +164,19 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       filename_(filename),
       file_id_(file_id),
       nr_synced_extents_(0),
+      level_(-99),
       is_appending_(false),
       marked_for_del_(false),
-      should_flush_full_buffer_(false){}
+      should_flush_full_buffer_(false){
+        std::string fname_wo_path = filename_.substr(filename_.size() - 10);
+        if (fname_wo_path.substr(fname_wo_path.size() -3) == "sst") {
+            std::string fnostr = fname_wo_path.substr(0, 6);
+            fno_ = std::stoull(fnostr); 
+            is_sst_ = true;
+        } else {
+            is_sst_ = false;
+        }
+      }
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -176,8 +186,15 @@ uint64_t ZoneFile::GetFileSize() { return fileSize; }
 void ZoneFile::SetFileSize(uint64_t sz) { fileSize = sz; }
 
 ZoneFile::~ZoneFile() {
-
   while(zbd_->zc_in_progress_.load() == true){}
+  if (is_sst_) {
+//  std::cerr<<"Delete SSTable (fname_, fno_) : ("<<filename_<<", "<<fno_<<")"<<std::endl;
+    auto search = zbd_->sst_to_zone_.find(fno_);
+    assert(search != zbd_->sst_to_zone_.end());
+    zbd_->sst_zone_mtx_.lock();
+    zbd_->sst_to_zone_.erase(search);
+    zbd_->sst_zone_mtx_.unlock();
+  }  
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
    
     Zone* zone = (*e)->zone_;
@@ -313,7 +330,25 @@ void ZoneFile::PushExtent() {
   ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
-  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_));
+  if (is_sst_) {
+    auto search = zbd_->sst_to_zone_.find(fno_);
+    if (search == zbd_->sst_to_zone_.end()){
+      zbd_->sst_zone_mtx_.lock();
+//      std::cerr <<"(1) fno("<<fno_<<") Push Zone id : " <<active_zone_->zone_id_ << std::endl;
+      zbd_->sst_to_zone_.insert(std::pair<uint64_t, std::vector<int> >(fno_, {active_zone_->zone_id_}));
+    } else {
+      zbd_->sst_zone_mtx_.lock();
+//      std::cerr <<"(2) fno("<<fno_<<") Push Zone id : " << active_zone_->zone_id_ << std::endl;
+//      std::cerr <<"into exsting vector element : ";
+//      for (const int zid : search->second ) {
+//        std::cerr << zid <<" ";
+//      }
+//      std::cerr << std::endl;
+      zbd_->sst_to_zone_[fno_].push_back(active_zone_->zone_id_);
+    }
+    zbd_->sst_zone_mtx_.unlock();
+  }
+  active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_, this->level_));
   active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
@@ -322,7 +357,6 @@ void ZoneFile::PushExtent() {
 }
 
 IOStatus ZoneFile::FullBuffer(void* data, int data_size, int valid_size) {
-
     Buffer * buf = new Buffer(data, data_size, valid_size);
     full_buffer_.push_back(buf);
 
@@ -330,14 +364,29 @@ IOStatus ZoneFile::FullBuffer(void* data, int data_size, int valid_size) {
 }
 
 /* Assumes that data and size are block aligned */
-IOStatus ZoneFile::AppendBuffer(void* data, int data_size, int valid_size) {
+IOStatus ZoneFile::AppendBuffer() {
+  
+  char * data;
+  uint32_t data_size = 0;
+  int valid_size = 0;
+  uint32_t buf_offset = 0;
 
+  for(const auto& b : full_buffer_) {
+    data_size += b->buffer_size_;
+    valid_size += b->valid_size_;
+  }
+  data = new char[data_size];
+  for(const auto& b : full_buffer_) {
+    memcpy(data + buf_offset, b->buffer_, b->buffer_size_);
+    buf_offset += b->buffer_size_;
+  }
+  
   uint32_t left = data_size;
   uint32_t wr_size, offset = 0;
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(lifetime_);
+    active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_, lifetime_, fno_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -352,8 +401,7 @@ IOStatus ZoneFile::AppendBuffer(void* data, int data_size, int valid_size) {
       PushExtent(); 
       active_zone_->CloseWR();
       active_zone_->is_append.store(false);
-     
-      active_zone_ = zbd_->AllocateZone(lifetime_);
+      active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_, lifetime_,fno_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }
@@ -375,22 +423,23 @@ IOStatus ZoneFile::AppendBuffer(void* data, int data_size, int valid_size) {
     offset += wr_size;
   }
   fileSize -= (data_size - valid_size);
+  
+  delete data;
+  
+  for(auto& b : full_buffer_) {
+    delete b->buffer_;
+  }
+  
+  full_buffer_.clear();  
   return IOStatus::OK();
 }
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
-
-  if (filename_.substr(filename_.size() - 3) == "sst") {
+  
+  if (is_sst_) {
       if(should_flush_full_buffer_) {
-        if(!full_buffer_.empty()) {
-          for(const auto& b : full_buffer_) {
-            AppendBuffer(b->buffer_, b->buffer_size_, b->valid_size_);
-          }
-          for(auto b : full_buffer_) {
-            delete b;
-          }
-          full_buffer_.clear();
-        }
+        FullBuffer(data, data_size, valid_size);
+        return AppendBuffer();
       } else {
         return FullBuffer(data, data_size, valid_size);
       }
@@ -400,7 +449,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(lifetime_);
+    active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_, lifetime_, fno_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -415,8 +464,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
       PushExtent(); 
       active_zone_->CloseWR();
       active_zone_->is_append.store(false);
-     
-      active_zone_ = zbd_->AllocateZone(lifetime_);
+      active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_, lifetime_, fno_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }
@@ -487,6 +535,7 @@ IOStatus ZonedWritableFile::Truncate(uint64_t size,
 IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
                                   IODebugContext* /*dbg*/) {
   IOStatus s;
+  ShouldFlushFullBuffer();
   zoneFile_->is_appending_.store(true);
   buffer_mtx_.lock();
   s = FlushBuffer();

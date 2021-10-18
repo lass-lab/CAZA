@@ -152,6 +152,7 @@ class DBImpl : public DB {
 
   std::mutex fd_mutex_;
   std::map<int, std::vector<uint64_t>> compaction_inputs_;
+  const InternalKeyComparator* GetDefaultICMP();
   void printCompactionHistory();
   void InsertCompactionFileList(const int &job_id, const std::vector<CompactionInputFiles> *inputs);
   void LogLSMStateHistoryWithZoneState();

@@ -334,22 +334,14 @@ void ZoneFile::PushExtent() {
     auto search = zbd_->sst_to_zone_.find(fno_);
     if (search == zbd_->sst_to_zone_.end()){
       zbd_->sst_zone_mtx_.lock();
-//      std::cerr <<"(1) fno("<<fno_<<") Push Zone id : " <<active_zone_->zone_id_ << std::endl;
       zbd_->sst_to_zone_.insert(std::pair<uint64_t, std::vector<int> >(fno_, {active_zone_->zone_id_}));
     } else {
       zbd_->sst_zone_mtx_.lock();
-//      std::cerr <<"(2) fno("<<fno_<<") Push Zone id : " << active_zone_->zone_id_ << std::endl;
-//      std::cerr <<"into exsting vector element : ";
-//      for (const int zid : search->second ) {
-//        std::cerr << zid <<" ";
-//      }
-//      std::cerr << std::endl;
       zbd_->sst_to_zone_[fno_].push_back(active_zone_->zone_id_);
     }
     zbd_->sst_zone_mtx_.unlock();
   }
   active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_, this->level_));
-  active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;

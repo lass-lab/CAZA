@@ -285,7 +285,12 @@ unsigned long long DBImpl::GetTimeStamp(){
 
     return elapsed_;
 }
+const InternalKeyComparator* DBImpl::GetDefaultICMP(){
 
+    auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+    return vstorage->InternalComparator();
+
+}
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
     

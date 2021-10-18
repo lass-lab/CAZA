@@ -118,7 +118,7 @@ class InvalValComp{
   public:
    bool operator()(const AllocVictimZone *a, const AllocVictimZone* b) {
     if (a->get_inval_bytes() > b->get_inval_bytes()) {
-      /*Give more priority zone with more invalid data */
+      /* Give higher priority zone with more invalid data */
       return true; 
     } else if (a->get_inval_bytes() == b->get_inval_bytes()) {
       return a->get_valid_bytes() <= b->get_valid_bytes();
@@ -226,11 +226,12 @@ class ZonedBlockDevice {
   void SortZone();
   //void PickZoneWithCompactionVictim(std::vector<Zone*>&);
   void PickZoneWithOnlyInvalid(std::vector<Zone*>&);
-  Zone * AllocateMostL0L1Files(const std::set<int>&);
+  Zone * AllocateMostL0Files(const std::set<int>&);
+  Zone * AllocateZoneWithSameLevelFiles(const std::vector<uint64_t>&, const InternalKey, const InternalKey);
   void SameLevelFileList(const int, std::vector<uint64_t>&);
   void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&);
   Zone *AllocateZone(InternalKey, InternalKey, int, Env::WriteLifeTimeHint lifetime, uint64_t);
-  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones, Env::WriteLifeTimeHint lifetime);
+  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones);
   Zone *AllocateMetaZone();
 
   uint64_t GetFreeSpace();

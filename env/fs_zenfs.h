@@ -228,6 +228,7 @@ class ZenFS : public FileSystemWrapper {
   IOStatus DeleteFile(std::string fname);
 
  public:
+
   explicit ZenFS(ZonedBlockDevice* zbd, std::shared_ptr<FileSystem> aux_fs,
                  std::shared_ptr<Logger> logger);
   virtual ~ZenFS();
@@ -238,7 +239,7 @@ class ZenFS : public FileSystemWrapper {
   const char* Name() const override {
     return "ZenFS - The Zoned-enabled File System";
   }
-
+  MetadataWriter* GetMetaWriter(){return &metadata_writer_;};
   virtual IOStatus NewSequentialFile(const std::string& fname,
                                      const FileOptions& file_opts,
                                      std::unique_ptr<FSSequentialFile>* result,

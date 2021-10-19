@@ -159,6 +159,7 @@ class ZonedWritableFile : public FSWritableFile {
   ZoneFile* zoneFile_;
   MetadataWriter* metadata_writer_;
 
+
   std::mutex buffer_mtx_;
 };
 

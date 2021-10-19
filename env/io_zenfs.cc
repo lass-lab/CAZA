@@ -114,7 +114,6 @@ Status ZoneFile::DecodeFrom(Slice* input) {
           return Status::Corruption("ZoneFile", "Invalid zone extent");
         extent->zone_->used_capacity_ += extent->length_;
         extents_.push_back(extent);
-        fprintf(stderr, "Push Extent info in ZoneFile::DecodeFrom\n");
         extent->zone_->PushExtentInfo(new ZoneExtentInfo(extent, this, true, extent->length_,extent->start_, extent->zone_, filename_, this->lifetime_));
         break;
       default:
@@ -143,7 +142,6 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
     ZoneExtent* new_extent = new ZoneExtent(extent->start_,extent->length_, zone);
 
     extents_.push_back(new_extent);
-    fprintf(stderr, "Push Extent info in ZoneFile::MergeUpdate\n");
     ZoneExtentInfo* new_extent_info = new ZoneExtentInfo(new_extent, this, true, extent->length_, new_extent->start_, new_extent->zone_, filename_, this->lifetime_);
     zone->PushExtentInfo(new_extent_info);
 
@@ -313,7 +311,7 @@ void ZoneFile::PushExtent() {
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
   active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_));
-  active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
+// active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;

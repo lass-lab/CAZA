@@ -33,6 +33,7 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+class ZenFS;
 class DBImpl;
 class Zone;
 class ZoneFile;
@@ -161,6 +162,7 @@ class ZonedBlockDevice {
 
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
+  ZenFS* fs;
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
@@ -178,13 +180,14 @@ class ZonedBlockDevice {
   virtual ~ZonedBlockDevice();
   
   void printZoneStatus(const std::vector<Zone *>&);
+  void SetFsPtr(ZenFS* fss) {fs = fss;}
 
   IOStatus Open(bool readonly = false);
 
   Zone *GetIOZone(uint64_t offset);
 
   Zone *AllocateZone(Env::WriteLifeTimeHint lifetime);
-  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones, Env::WriteLifeTimeHint lifetime);
+  Zone *AllocateZoneForCleaning(Env::WriteLifeTimeHint lifetime);
   Zone *AllocateMetaZone();
 
   uint64_t GetFreeSpace();

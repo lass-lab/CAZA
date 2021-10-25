@@ -83,7 +83,15 @@ class ZoneFile {
   bool should_flush_full_buffer_;
   bool is_sst_;
   uint64_t fno_;
+
+  std::mutex extent_mtx_;
+  std::atomic<bool> extent_writer;
+  std::atomic<unsigned int> extent_reader;
+  std::condition_variable extent_cv;
+
   IOStatus FullBuffer(void*, int, int);
+  ZonedBlockDevice* get_zbd(){return zbd_;};
+
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
                     uint64_t file_id_);
@@ -107,6 +115,12 @@ class ZoneFile {
                           char* scratch, bool direct);
   ZoneExtent* GetExtent(uint64_t file_offset, uint64_t* dev_offset);
   void PushExtent();
+
+  void ExtentReadLock();
+  void ExtentReadUnlock();
+
+  void ExtentWriteLock();
+  void ExtentWriteUnlock();
 
   void EncodeTo(std::string* output, uint32_t extent_start);
   void EncodeUpdateTo(std::string* output) {

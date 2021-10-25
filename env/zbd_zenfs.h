@@ -209,15 +209,25 @@ class ZonedBlockDevice {
   std::mutex append_mtx_;
   std::mutex sst_zone_mtx_;
   std::atomic<unsigned long long> WR_DATA;
+  std::atomic<unsigned long long> LAST_WR_DATA;
 
   std::map<uint64_t, ZoneFile*> files_;
+  std::mutex files_mtx_;
+
+  std::mutex df_mtx_;
+  std::ofstream df_file;
+  std::ofstream reset_file;
+
   std::map<uint64_t, std::vector<int>> sst_to_zone_;
   std::map<int, Zone*> id_to_zone_;
 
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
   virtual ~ZonedBlockDevice();
-  
+  uint64_t GetFreeSpace();
+  uint64_t GetUsedSpace();
+  uint64_t GetReclaimableSpace();
+
   void printZoneStatus(const std::vector<Zone *>&);
 
   IOStatus Open(bool readonly = false);
@@ -230,11 +240,10 @@ class ZonedBlockDevice {
   Zone * AllocateZoneWithSameLevelFiles(const std::vector<uint64_t>&, const InternalKey, const InternalKey);
   void SameLevelFileList(const int, std::vector<uint64_t>&);
   void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&);
-  Zone *AllocateZone(InternalKey, InternalKey, int, Env::WriteLifeTimeHint lifetime, uint64_t);
-  Zone *AllocateZoneForCleaning(std::vector<Zone *> new_io_zones);
+  Zone *AllocateZone(InternalKey, InternalKey, int);
+  Zone *AllocateZoneForCleaning();
   Zone *AllocateMetaZone();
 
-  uint64_t GetFreeSpace();
   std::string GetFilename();
   uint32_t GetBlockSize();
 

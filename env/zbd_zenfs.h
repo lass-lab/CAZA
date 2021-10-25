@@ -113,7 +113,7 @@ class Zone {
  * (Corner Case) : All zone has no invalid data but cannot allocate since rough lifetime estimation*/
   double secondary_lifetime_;
   std::atomic<long> used_capacity_;
-
+  std::atomic<bool> zc_victim_;
   IOStatus Reset();
   IOStatus Finish();
   IOStatus Close();
@@ -144,10 +144,11 @@ class ZonedBlockDevice {
   uint32_t zone_sz_;
   uint32_t nr_zones_;
   std::vector<Zone *> io_zones;
+  std::vector<Zone *> reserved_zones;
+
   std::mutex io_zones_mtx;
 
   std::vector<Zone *> meta_zones;
-  std::vector<Zone *> reserved_zones; // reserved for a Zone Cleaning
   int read_f_;
   int read_direct_f_;
   int write_f_;
@@ -163,6 +164,7 @@ class ZonedBlockDevice {
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
   ZenFS* fs;
+  uint64_t reset_cnt;
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
@@ -173,7 +175,11 @@ class ZonedBlockDevice {
   std::atomic<bool> zc_in_progress_;
   std::mutex append_mtx_;
 
+  std::mutex df_mtx_;
+  std::ofstream df_file;
+  std::ofstream reset_file;
   std::atomic<unsigned long long> WR_DATA;
+  std::atomic<unsigned long long> LAST_WR_DATA;
 
   explicit ZonedBlockDevice(std::string bdevname,
                             std::shared_ptr<Logger> logger);
@@ -187,10 +193,13 @@ class ZonedBlockDevice {
   Zone *GetIOZone(uint64_t offset);
 
   Zone *AllocateZone(Env::WriteLifeTimeHint lifetime);
-  Zone *AllocateZoneForCleaning(Env::WriteLifeTimeHint lifetime);
+  Zone *AllocateZoneForCleaning();
   Zone *AllocateMetaZone();
 
   uint64_t GetFreeSpace();
+  uint64_t GetUsedSpace();
+  uint64_t GetReclaimableSpace();
+
   std::string GetFilename();
   uint32_t GetBlockSize();
 

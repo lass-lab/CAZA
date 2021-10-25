@@ -133,6 +133,7 @@ Status ZoneFile::MergeUpdate(ZoneFile* update) {
   Rename(update->GetFilename());
   SetFileSize(update->GetFileSize());
 
+  fprintf(stderr, "MergeUpdate %s\n", update->GetFilename().c_str());
   std::vector<ZoneExtent*> update_extents = update->GetExtents();
   
   for (long unsigned int i = 0; i < update_extents.size(); i++) {
@@ -163,7 +164,11 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       file_id_(file_id),
       nr_synced_extents_(0),
       is_appending_(false),
-      marked_for_del_(false){}
+      marked_for_del_(false),
+      closed_(false),
+      moving_(false),
+      extent_writer(false),
+      extent_reader(0){};
 
 std::string ZoneFile::GetFilename() { return filename_; }
 
@@ -174,21 +179,20 @@ void ZoneFile::SetFileSize(uint64_t sz) { fileSize = sz; }
 
 ZoneFile::~ZoneFile() {
 
-  while(zbd_->zc_in_progress_.load() == true){}
+  zbd_->zone_cleaning_mtx.lock(); 
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
    
     Zone* zone = (*e)->zone_;
     assert(zone);
     assert(zone->used_capacity_.load() >= (*e)->length_);
 
-    zone->zone_del_mtx_.lock();
     zone->used_capacity_ -= (*e)->length_;
-    
     zone->Invalidate(*e);
     delete *e;
-    zone->zone_del_mtx_.unlock();
   }
+  zbd_->zone_cleaning_mtx.unlock();
   CloseWR();
+
 }
 
 void ZoneFile::CloseWR() {
@@ -199,14 +203,17 @@ void ZoneFile::CloseWR() {
 }
 
 ZoneExtent* ZoneFile::GetExtent(uint64_t file_offset, uint64_t* dev_offset) {
+  ExtentReadLock();
   for (unsigned int i = 0; i < extents_.size(); i++) {
     if (file_offset < extents_[i]->length_) {
       *dev_offset = extents_[i]->start_ + file_offset;
+      ExtentReadUnlock();
       return extents_[i];
     } else {
       file_offset -= extents_[i]->length_;
     }
   }
+  ExtentReadUnlock();
   return NULL;
 }
 
@@ -227,16 +234,17 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
     *result = Slice(scratch, 0);
     return IOStatus::OK();
   }
-
+  
   r_off = 0;
   extent = GetExtent(offset, &r_off);
+
   if (!extent) {
     /* read start beyond end of (synced) file data*/
     *result = Slice(scratch, 0);
     return s;
   }
   extent_end = extent->start_ + extent->length_;
-
+  
   /* Limit read size to end of file */
   if ((offset + n) > fileSize)
     r_sz = fileSize - offset;
@@ -265,7 +273,6 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
       }
       break;
     }
-
     pread_sz = (size_t)r;
 
     ptr += pread_sz;
@@ -288,7 +295,6 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
     s = IOStatus::IOError("pread error\n");
     read = 0;
   }
-
   *result = Slice((char*)scratch, read);
   return s;
 }
@@ -307,17 +313,60 @@ void ZoneFile::PushExtent() {
   }
 
   assert(length <= (active_zone_->wp_ - extent_start_));
+  ExtentWriteLock(); 
   ZoneExtent * new_extent = new ZoneExtent(extent_start_, length, active_zone_); 
   extents_.push_back(new_extent);
   //(ZC) Add inforamtion about currently written extent into the Zone. So that make it easier to track validity of the extents in zone in processing Zone Cleaning
   active_zone_->PushExtentInfo(new ZoneExtentInfo(new_extent, this, true, length, new_extent->start_, new_extent->zone_, filename_, this->lifetime_));
-// active_zone_->UpdateSecondaryLifeTime(lifetime_, length);
+  ExtentWriteUnlock(); 
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = fileSize;
   active_zone_->is_append.store(false);
 }
 
+void ZoneFile::ExtentReadLock(){
+
+ std::unique_lock<std::mutex> lk(extent_mtx_);
+ while (extent_writer.load()){
+     extent_cv.wait(lk, [this]{
+      if (extent_writer.load() == true) {
+        return false; 
+      } else {
+        return true;
+      }
+    });
+ }
+ extent_reader++;
+}
+
+void ZoneFile::ExtentReadUnlock(){
+ std::unique_lock<std::mutex> lk(extent_mtx_);
+ extent_reader--;
+ if (extent_reader.load() == 0)
+    extent_cv.notify_all();
+}
+
+void ZoneFile::ExtentWriteLock(){
+
+ std::unique_lock<std::mutex> lk(extent_mtx_);
+ while (extent_writer.load() || extent_reader.load() > 0 ){
+    extent_cv.wait(lk, [this]{
+      if (extent_writer.load() || extent_reader.load() > 0) {
+         return false; 
+      } else { 
+        return true;
+      }
+    });
+ }
+ extent_writer.store(true);
+}
+
+void ZoneFile::ExtentWriteUnlock(){
+ std::unique_lock<std::mutex> lk(extent_mtx_);
+ extent_writer.store(false);
+ extent_cv.notify_one();
+}
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
 
@@ -447,7 +496,7 @@ IOStatus ZonedWritableFile::Close(const IOOptions& options,
                                   IODebugContext* dbg) {
   Fsync(options, dbg);
   zoneFile_->CloseWR();
-
+  zoneFile_->closed_ = true;
   return IOStatus::OK();
 }
 

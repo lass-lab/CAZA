@@ -686,7 +686,7 @@ Status ZenFS::RecoverFrom(ZenMetaLog* log) {
   Slice data;
   Status s;
   bool done = false;
-
+  fprintf(stderr, "ZenFS::RecoverFrom()\n");
   while (!done) {
     IOStatus rs = log->ReadRecord(&record, &scratch);
     if (!rs.ok()) {

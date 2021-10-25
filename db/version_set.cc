@@ -4609,14 +4609,20 @@ Status VersionSet::GetCurrentManifestPath(const std::string& dbname,
   assert(fs != nullptr);
   assert(manifest_path != nullptr);
   assert(manifest_file_number != nullptr);
-
+  fprintf(stderr, "VersionSet::GetCurrentManifestPath() - Start\n");
   std::string fname;
   Status s = ReadFileToString(fs, CurrentFileName(dbname), &fname);
   if (!s.ok()) {
     return s;
   }
   if (fname.empty() || fname.back() != '\n') {
-    return Status::Corruption("CURRENT file does not end with newline");
+    /*if (fname.empty()) {
+       return Status::Corruption("CURRENT file does not end with newline::Empty");
+    }else{
+       
+       return Status::Corruption("CURRENT file does not end with newline, ",fname);
+    }*/
+       return Status::Corruption("CURRENT file does not end with newline");
   }
   // remove the trailing '\n'
   fname.resize(fname.size() - 1);
@@ -4630,6 +4636,8 @@ Status VersionSet::GetCurrentManifestPath(const std::string& dbname,
     manifest_path->push_back('/');
   }
   manifest_path->append(fname);
+  fprintf(stderr, "VersionSet::GetCurrentManifestPath() - End, fname : %s\n", fname.c_str());
+
   return Status::OK();
 }
 

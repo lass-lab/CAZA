@@ -4200,6 +4200,7 @@ class Benchmark {
           db->db = ptr;
         }
       } else {
+        fprintf(stderr, "DB::Open()\n");
         s = DB::Open(options, db_name, column_families, &db->cfh, &db->db);
       }
 #else

@@ -53,10 +53,16 @@ class ZoneFile {
  public:
   std::atomic<bool> is_appending_;
   std::atomic<bool> marked_for_del_;
+  std::atomic<bool> closed_;
+  std::atomic<bool> moving_;
+  std::mutex extent_mtx_;
+  std::atomic<bool> extent_writer;
+  std::atomic<unsigned int> extent_reader;
+  std::condition_variable extent_cv;
+
   Zone * GetActiveZone(){return active_zone_;};
   explicit ZoneFile(ZonedBlockDevice* zbd, std::string filename,
                     uint64_t file_id_);
-
   virtual ~ZoneFile();
 
   void CloseWR();
@@ -74,7 +80,14 @@ class ZoneFile {
   IOStatus PositionedRead(uint64_t offset, size_t n, Slice* result,
                           char* scratch, bool direct);
   ZoneExtent* GetExtent(uint64_t file_offset, uint64_t* dev_offset);
+  
   void PushExtent();
+
+  void ExtentReadLock();
+  void ExtentReadUnlock();
+  
+  void ExtentWriteLock();
+  void ExtentWriteUnlock();
 
   void EncodeTo(std::string* output, uint32_t extent_start);
   void EncodeUpdateTo(std::string* output) {
@@ -87,9 +100,7 @@ class ZoneFile {
   Status MergeUpdate(ZoneFile* update);
 
   std::vector<ZoneExtent*>& GetExtentsList(){return extents_;};
-  void UpdateExtents(std::vector<ZoneExtent*>& a){
-      extents_ = a;
-  };
+  void UpdateExtents(std::vector<ZoneExtent*>& a){ extents_ = a; };
   uint64_t GetID() { return file_id_; }
   size_t GetUniqueId(char* id, size_t max_size);
 

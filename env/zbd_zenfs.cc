@@ -200,7 +200,6 @@ IOStatus Zone::Append(char *data, uint32_t size) {
      uint64_t used = zbd_->GetUsedSpace();
      uint64_t free = zbd_->GetFreeSpace();
      uint64_t reclaimable = zbd_->GetReclaimableSpace();
-     fprintf(stderr, "Write to df_file\n");
      zbd_->df_file << "Free: " <<  free / (1024 * 1024) << "MB\n" <<
                 "Used: " << used / (1024 * 1024) << "MB\n" <<
                 "Reclaimable: " << reclaimable / (1024 * 1024) << "MB\n" <<
@@ -567,11 +566,15 @@ void ZonedBlockDevice::PickZoneWithOnlyInvalid(std::vector<Zone*>& candidates) {
 }
 void ZonedBlockDevice::SortZone(){
 
+//  int cnt = 0;
+//  fprintf(stderr, "********************************************************************\n");
   while (!allocate_queue_.empty()) {
      AllocVictimZone* a = allocate_queue_.top();
      allocate_queue_.pop();
+//     fprintf(stderr, "(%d)invalid %lu: , valid : %lu\n", cnt++, a->get_inval_bytes(), a->get_valid_bytes());
      delete a;
   }
+//  fprintf(stderr, "********************************************************************\n\n\n");
   for (const auto z : io_zones) {
    if(z->IsFull() || z->open_for_write_) continue;
 
@@ -601,11 +604,11 @@ void ZonedBlockDevice::SortZone(){
    ///Higher the invalid ratio, Higher the priority.
    allocate_queue_.push(new AllocVictimZone(z, invalid_extent_length, valid_extent_length));
  }
- assert(!allocate_queue_.empty());
+ //assert(!allocate_queue_.empty());
 };
 
 Zone* ZonedBlockDevice::AllocateZoneWithSameLevelFiles(const std::vector<uint64_t>& fno_list, const InternalKey smallest, const InternalKey largest) {
-    
+   
     Zone* allocated_zone = nullptr;
     const InternalKeyComparator* icmp = db_ptr_->GetDefaultICMP();
     int l_idx, r_idx;
@@ -751,6 +754,72 @@ void ZonedBlockDevice::AdjacentFileList(const InternalKey& s, const InternalKey&
     db_ptr_->AdjacentFileList(s, l, level, fno_list);
 }
 
+
+void ZonedBlockDevice::PrintVictimInformation(const Zone* z, bool is_zc) {
+
+        uint64_t valid_extent_length = 0;
+        uint64_t invalid_extent_length = 0;
+        std::vector<ZoneExtentInfo *> invalid_list;
+        std::vector<ZoneExtentInfo *> valid_list;
+        
+        for(auto ext_info: z->extent_info_) {
+            
+            if(ext_info->valid_) {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                valid_extent_length += (cur_length + pad);
+                valid_list.push_back(ext_info);
+            } else {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                invalid_extent_length += (cur_length + pad);
+                invalid_list.push_back(ext_info);
+            }
+        }
+        if (is_zc) {
+          cout << "Zone Information" <<endl;
+          cout << "start : " << z->start_<< fixed <<endl;
+          cout << "wp : " << z->wp_ << fixed <<endl;
+          cout << "used_capcity : " << z->used_capacity_.load() << endl;
+          cout << "max_capacity : " << z->max_capacity_ << endl;
+          cout << "invalid_bytes(with_padds) : " << invalid_extent_length <<endl;
+          cout << "valid_bytes(with_padds) : " << valid_extent_length  <<endl;
+          cout << "remain_capacity : " << z->capacity_ <<endl;
+          cout << "lifetime : " << z->lifetime_ << endl;
+          cout << "invalid_ext_cnt : " << invalid_list.size() << endl;
+          cout << "valid_ext_cnt : " << valid_list.size() << endl;
+          cout << "Invalid Extent Information" << endl;
+          printZoneExtentInfo(invalid_list, is_zc);
+          cout << "Valid Extent Information" << endl;
+          printZoneExtentInfo(valid_list, is_zc);
+        } else {
+          reset_file << "Zone Information" <<endl;
+          reset_file << "start : " << z->start_<< fixed <<endl;
+          reset_file << "wp : " << z->wp_ << fixed <<endl;
+          reset_file << "used_capcity : " << z->used_capacity_.load() << endl;
+          reset_file << "max_capacity : " << z->max_capacity_ << endl;
+          reset_file << "invalid_bytes(with_padds) : " << invalid_extent_length <<endl;
+          reset_file << "valid_bytes(with_padds) : " << valid_extent_length  <<endl;
+          reset_file << "remain_capacity : " << z->capacity_ <<endl;
+          reset_file << "lifetime : " << z->lifetime_ << endl;
+          reset_file << "invalid_ext_cnt : " << invalid_list.size() << endl;
+          reset_file << "valid_ext_cnt : " << valid_list.size() << endl;
+          reset_file << "Invalid Extent Information" << endl;
+          printZoneExtentInfo(invalid_list, is_zc);
+          reset_file << "Valid Extent Information" << endl;
+          printZoneExtentInfo(valid_list, is_zc);        
+        }
+}
+
+
 Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, int level) {
 
   Zone *allocated_zone = nullptr;
@@ -775,7 +844,7 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
     if (z->open_for_write_ || z->IsEmpty() || (z->IsFull() && z->IsUsed()))
       continue;
     
-    if (!z->IsUsed()) {
+    if (!z->IsUsed())  {
       if (!z->IsFull()) active_io_zones_--;
       bool all_invalid = true;
       
@@ -785,7 +854,8 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
         }
       }
       assert(all_invalid);
-      reset_file << "reset : "<< (z->wp_ - z->start_) << std::endl;
+      reset_file << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() <<endl;
+      PrintVictimInformation(z, false);
       s = z->Reset();
 
       if (!s.ok()) {
@@ -805,17 +875,26 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
     }
   }
   {
-    uint64_t reclaimable = 0;
-    uint64_t used = 0;
-    for (const auto z : io_zones) {
-      used += z->used_capacity_;
-      if (z->IsFull())
-        reclaimable += (z->max_capacity_ - z->used_capacity_);
-    }
-    double sa = ((double)reclaimable / used);
-    if (sa >= (double)1.5){
-      std::cerr << "Space Amplification Before ZC : "<< sa*100 << endl;
-      
+    uint64_t free = GetFreeSpace();
+    size_t nr_zones = io_zones.size();
+    uint64_t total = (nr_zones * io_zones[0]->max_capacity_);
+    double free_ratio = (((double)free / total) * 100);
+    bool trigger_zc = free_ratio < 20.0f;
+
+    if (trigger_zc) {
+      uint64_t num_zone_to_reset;
+      if (free_ratio > 15.0f) {
+          num_zone_to_reset = nr_zones / 90;   
+      } else if (free_ratio > 10.0f){
+          num_zone_to_reset = nr_zones / 30;       
+      } else if (free_ratio > 5.0f){
+          num_zone_to_reset = nr_zones / 15;   
+      } else{
+          num_zone_to_reset = nr_zones;   
+      }
+    
+      fprintf(stderr, "num_zone_to_reset : %lu , free_ratio : %f\n", num_zone_to_reset, free_ratio);
+
       while (!gc_queue_.empty()){
         auto a = gc_queue_.top();
         delete a;
@@ -825,7 +904,6 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
       cout << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() <<endl;
 #endif
     for (auto z : io_zones) {
-        
         uint64_t valid_extent_length = 0;
         uint64_t invalid_extent_length = 0;
         std::vector<ZoneExtentInfo *> invalid_list;
@@ -858,42 +936,14 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
                 invalid_list.push_back(ext_info);
             }
         }
-
-#ifdef EXPERIMENT
-        cout << "Zone Information" <<endl;
-        cout << "start : " << z->start_<< fixed <<endl;
-        cout << "wp : " << z->wp_ << fixed <<endl;
-        cout << "used_capcity : " << z->used_capacity_.load() << endl;
-        cout << "max_capacity : " << z->max_capacity_ << endl;
-        cout << "invalid_bytes(with_padds) : " << invalid_extent_length <<endl;
-        cout << "valid_bytes(with_padds) : " << valid_extent_length  <<endl;
-        cout << "remain_capacity : " << z->capacity_ <<endl;
-        cout << "lifetime : " << z->lifetime_ << endl;
-        cout << "invalid_ext_cnt : " << invalid_list.size() << endl;  
-        cout << "valid_ext_cnt : " << valid_list.size() << endl;  
-        cout << "Invalid Extent Information" << endl;
-        printZoneExtentInfo(invalid_list);
-        cout << "Valid Extent Information" << endl;
-        printZoneExtentInfo(valid_list);
-#endif 
         //Insert into queue with sorting by its invalid ratio. 
         //Higher the invalid ratio, Higher the priority.
-        if (z->IsFull() && invalid_extent_length > 0 && !z->open_for_write_) {
+        if (invalid_extent_length > 0 && !z->open_for_write_) {
           gc_queue_.push(new GCVictimZone(z, invalid_extent_length));
         }
     }
     
-   ZoneCleaning();
-
-   used = 0;
-   reclaimable = 0;
-   for (const auto z : io_zones) {
-      used += z->used_capacity_;
-      if (z->IsFull())
-        reclaimable += (z->max_capacity_ - z->used_capacity_);
-   }
-   sa = ((double)reclaimable / used );
-   std::cerr << "Space Amplification After ZC : "<< sa*100 << endl;
+   ZoneCleaning(num_zone_to_reset);
   }
   }
   if (sst_to_zone_.empty()) {
@@ -1028,6 +1078,7 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
   // If there's multiple SSTable, Then allocate with zone that has SSTable with most closest key range. 
   if (!allocated_zone) {
     SameLevelFileList(level, fno_list);
+    fprintf(stderr, "AllocateZoneWithSameLevel : %d\n", level);
     allocated_zone = AllocateZoneWithSameLevelFiles(fno_list, smallest, largest);
   }
 
@@ -1038,7 +1089,6 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
     io_zones_mtx.unlock();
     return allocated_zone;
   }
-
   if(!allocated_zone){
     SortZone();
     while (!allocate_queue_.empty()) {
@@ -1058,10 +1108,7 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
     io_zones_mtx.unlock();
     return allocated_zone;
   }
-
   if (!allocated_zone) {
-  fprintf(stderr, "Trigger ZC due to lack of space!\n");
-
    while (!gc_queue_.empty()){
       auto a = gc_queue_.top();
       delete a;
@@ -1070,10 +1117,9 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
   //Trigger GC for reclaim free space in the Device.
   //(Step 1) Classify all active zones by its invalid data ratio.
 #ifdef EXPERIMENT
-        cout << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() <<endl;
+        cout << "GC triggered count : " << ++num_zc_cnt << "Time : " << db_ptr_->GetTimeStamp() << endl;
 #endif
     for (auto z : io_zones) {
-        
         uint64_t valid_extent_length = 0;
         uint64_t invalid_extent_length = 0;
         std::vector<ZoneExtentInfo *> invalid_list;
@@ -1106,32 +1152,13 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
                 invalid_list.push_back(ext_info);
             }
         }
-
-#ifdef EXPERIMENT
-        cout << "Zone Information" <<endl;
-        cout << "start : " << z->start_<< fixed <<endl;
-        cout << "wp : " << z->wp_ << fixed <<endl;
-        cout << "used_capcity : " << z->used_capacity_.load() << endl;
-        cout << "max_capacity : " << z->max_capacity_ << endl;
-        cout << "invalid_bytes(with_padds) : " << invalid_extent_length <<endl;
-        cout << "valid_bytes(with_padds) : " << valid_extent_length  <<endl;
-        cout << "remain_capacity : " << z->capacity_ <<endl;
-        cout << "lifetime : " << z->lifetime_ << endl;
-        cout << "invalid_ext_cnt : " << invalid_list.size() << endl;  
-        cout << "valid_ext_cnt : " << valid_list.size() << endl;  
-        cout << "Invalid Extent Information" << endl;
-        printZoneExtentInfo(invalid_list);
-        cout << "Valid Extent Information" << endl;
-        printZoneExtentInfo(valid_list);
-#endif 
         //Insert into queue with sorting by its invalid ratio. 
         //Higher the invalid ratio, Higher the priority.
         if (z->IsFull() && invalid_extent_length > 0 && !z->open_for_write_) {
           gc_queue_.push(new GCVictimZone(z, invalid_extent_length));
         }
     }
-  ZoneCleaning();
-  fprintf(stderr, "Finish ZC due to lack of space!\n");
+  ZoneCleaning(RESERVED_ZONE_FOR_CLEANING);
   }
 
   fno_list.clear();
@@ -1227,7 +1254,6 @@ Zone *ZonedBlockDevice::AllocateZone(InternalKey smallest, InternalKey largest, 
 
   //Find the Empty Zone First
   if (!allocated_zone) {
-
     if (active_io_zones_.load() < max_nr_active_io_zones_) {
       for (const auto z : io_zones) {
        if ((!z->open_for_write_) && z->IsEmpty()) {
@@ -1282,10 +1308,12 @@ Zone *ZonedBlockDevice::AllocateZoneForCleaning() {
     });
   }
 
+  allocated_zone = reserved_zones[0];
+/*
   for (const auto z : reserved_zones) {
     allocated_zone = z;
   }
-
+*/
   if (!allocated_zone) {
       printZoneStatus(reserved_zones);
       fprintf(stderr, "Allocate Zone Failed While Running Zone Cleaning!\n");
@@ -1343,26 +1371,30 @@ void ZonedBlockDevice::printZoneStatus(const std::vector<Zone *>& zones){
  (1) Select zone with most invalid data.
  (2) Process until every invalid data gets cleaned from zone.
 */
-int ZonedBlockDevice::ZoneCleaning() {
+int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
 
     zone_cleaning_mtx.lock();
-
+    int reseted = 0;
     if (gc_queue_.empty()) {
       return 0;
     }
+/*
     for(const auto rz : reserved_zones){
+        rz->open_for_write_ = false;
         rz->Reset();
     }
+*/
 #ifdef EXPERIMENT
     uint64_t copied_data = 0;
 #endif
-    
     Zone* allocated_zone = nullptr;
     while(!gc_queue_.empty()){
         //Process until every invalid data gets cleaned from zone.
         Zone* cur_victim = gc_queue_.top()->get_zone_ptr();
         int victim_zone_id = cur_victim->zone_id_;
         assert(cur_victim);
+
+        PrintVictimInformation(cur_victim, true);
 
         //Find the valid extents in currently selected zone.
         //Should recognize which file each extent belongs to.
@@ -1498,13 +1530,13 @@ int ZonedBlockDevice::ZoneCleaning() {
                         //update and notify resource status
                         allocated_zone->open_for_write_ = false;
                         open_io_zones_--;
-                        
+ 
                         allocated_zone->Finish();
                         active_io_zones_--;
     
                         for (auto it = reserved_zones.begin(); it != reserved_zones.end(); ){
-                          if (allocated_zone->zone_id_ == (*it)->zone_id_){
-                             fprintf(stderr, "ZC Move reserved to io zone\n");
+                          Zone * zz = (*it);
+                          if (allocated_zone == zz){
                              io_zones.push_back(*it);
                              reserved_zones.erase(it);
                              break;
@@ -1540,11 +1572,11 @@ int ZonedBlockDevice::ZoneCleaning() {
             }            
             free(buff);
         }
-        assert(!(cur_victim->open_for_write_));
+        assert(!cur_victim->open_for_write_);
         cur_victim->used_capacity_.store(0);
         cur_victim->Reset();
         active_io_zones_--;
-
+        reseted++;
         for (auto it = io_zones.begin(); it != io_zones.end(); it++){
           if ((*it)->zone_id_ == cur_victim->zone_id_) {
             io_zones.erase(it);
@@ -1553,18 +1585,7 @@ int ZonedBlockDevice::ZoneCleaning() {
           }
         }
         gc_queue_.pop();
-
-        uint64_t reclaimable = 0;
-        uint64_t used = 0;
-        for (const auto z : io_zones) {
-          used += z->used_capacity_;
-          if (z->IsFull())
-            reclaimable += (z->max_capacity_ - z->used_capacity_);
-        }
-        double sa = ((double)reclaimable / used);
-
-        if (sa <= (double)1.0)
-          break;
+        if (reseted > nr_reset) break;
     }
 #ifdef EXPERIMENT
     fprintf(stdout, "Total Copied Data in ZC : %lu\n", copied_data);
@@ -1581,7 +1602,7 @@ int ZonedBlockDevice::ZoneCleaning() {
 
     if (reserved_zones.size() < RESERVED_ZONE_FOR_CLEANING) {
       for ( auto it = io_zones.begin(); it !=io_zones.end(); ){
-       if ( ((*it)->IsEmpty()) &&  !((*it)->open_for_write_) && reserved_zones.size() != RESERVED_ZONE_FOR_CLEANING) {
+       if ( ((*it)->IsEmpty()) && !((*it)->open_for_write_) && reserved_zones.size() != RESERVED_ZONE_FOR_CLEANING) {
             reserved_zones.push_back(*it);
             io_zones.erase(it);
         } else {
@@ -1600,16 +1621,24 @@ int ZonedBlockDevice::ZoneCleaning() {
         }
       }
     }
+    for (auto it = reserved_zones.begin(); it != reserved_zones.end(); it++){
+        (*it)->used_capacity_.store(0);
+    }
     fprintf(stderr, "# of reserved_zone : %zu\n", reserved_zones.size());
     zone_cleaning_mtx.unlock();
     return 1;
 }//ZoneCleaning();
 
-void ZonedBlockDevice::printZoneExtentInfo(const std::vector<ZoneExtentInfo *>& list) {
+void ZonedBlockDevice::printZoneExtentInfo(const std::vector<ZoneExtentInfo *>& list, bool is_zc) {
     //print each extents file name and legnth
     for(const auto &ext : list){
-        cout<< "file name : " << ext->fname_ << endl;
-        cout<< "extent length : " << ext->length_ << endl;
+        if (is_zc){
+          cout<< "file name : " << ext->fname_ << endl;
+          cout<< "extent length : " << ext->length_ << endl;
+        } else{
+          reset_file<< "file name : " << ext->fname_ << endl;
+          reset_file<< "extent length : " << ext->length_ << endl;
+        }
     }
 }
 }  // namespace ROCKSDB_NAMESPACE

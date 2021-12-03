@@ -117,11 +117,11 @@ class AllocVictimZone {
 class InvalValComp{
   public:
    bool operator()(const AllocVictimZone *a, const AllocVictimZone* b) {
-    if (a->get_inval_bytes() > b->get_inval_bytes()) {
+    if (a->get_valid_bytes() > b->get_valid_bytes()) {
       /* Give higher priority zone with more invalid data */
       return true; 
-    } else if (a->get_inval_bytes() == b->get_inval_bytes()) {
-      return a->get_valid_bytes() <= b->get_valid_bytes();
+    } else if (a->get_valid_bytes() == b->get_valid_bytes()) {
+      return a->get_inval_bytes() < b->get_inval_bytes();
     } 
     return false;
    };
@@ -264,9 +264,9 @@ class ZonedBlockDevice {
   void NotifyIOZoneFull();
   void NotifyIOZoneClosed();
 
-  int ZoneCleaning();
-  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&);
-
+  int ZoneCleaning(int);
+  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&, bool);
+  void PrintVictimInformation(const Zone*, bool);
 };
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -11,10 +11,6 @@ fno_per_zone = [] # key : zone start, value : list of valid sst list and invalid
 gc_cnt = 0
 elpased_time = 0
 def PrintZoneSSTStatusAsCSV(outf_writer) :
-    tmp = []
-    outf_writer.writerow(tmp)
-    outf_writer.writerow(tmp)
-
     num_zone = len(fno_per_zone)
 
     max_inval_sst = 0
@@ -72,9 +68,14 @@ def PrintZoneSSTStatusAsCSV(outf_writer) :
     zone_idx = 0
     list_idx = zone_idx + 1
 
-    col = []
+    tmp = []
+    tmp.append((len(fno_per_zone)/2))
+    tmp.append(max_inval_sst);
+    tmp.append(max_val_sst);
+    outf_writer.writerow(tmp)
 
-    col.append("zone_wp")
+    col = []
+    col.append("zone_start")
 
     ext_cnt = 0
     while ext_cnt < max_inval_sst :
@@ -105,10 +106,6 @@ def PrintZoneSSTStatusAsCSV(outf_writer) :
         list_idx = zone_idx + 1  
 
     fno_per_zone.clear()
-
-    tmp = []
-    outf_writer.writerow(tmp)
-    outf_writer.writerow(tmp)
 
 def CountOverlappedSST(sst_dict) :
     
@@ -325,7 +322,7 @@ if __name__ == "__main__" :
     cinfname = sys.argv[2] # raw data set for compaction information
     ofname = sys.argv[3]
     ofname_2 = sys.argv[3][:len(sys.argv[3])-3]+"_files.csv"
-  
+
     outf = open(ofname, "w", newline='')
     outf_2 = open(ofname_2, "w", newline='')
 
@@ -533,8 +530,9 @@ if __name__ == "__main__" :
             inval_val_sst.append(invalsst_list)
             inval_val_sst.append(valsst_list)
 
-            fno_per_zone.append(wp[1])
-            fno_per_zone.append(inval_val_sst)
+            if int(remain[1]) == 0 :
+                fno_per_zone.append(start[1])
+                fno_per_zone.append(inval_val_sst)
 
         elif line[0] == 'T':
             tmp = re.split(' : |\n', line)

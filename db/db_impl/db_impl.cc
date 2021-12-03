@@ -272,7 +272,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
-  lsm_ofile.open("lsm_state.txt");
+  lsm_ofile.open("lsm_state.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
   start_t_ = std::chrono::system_clock::now();
 }
 
@@ -285,11 +285,12 @@ unsigned long long DBImpl::GetTimeStamp(){
 
     return elapsed_;
 }
+
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
     
     std::ofstream outfile;
-    outfile.open("compactions.txt");
+    outfile.open("compactions.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
  
     for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
         outfile << "job_id : " <<it->first << std::endl;
@@ -299,6 +300,7 @@ void DBImpl::printCompactionHistory(){
         }
     }
 }
+
 //Only used for ZenFS Experiment
 void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<CompactionInputFiles>* inputs){
     

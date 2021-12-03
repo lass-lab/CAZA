@@ -259,9 +259,9 @@ IOStatus ZoneFile::PositionedRead(uint64_t offset, size_t n, Slice* result,
     if ((pread_sz + r_off) > extent_end) pread_sz = extent_end - r_off;
 
     if (direct) {
-      assert((uint64_t)ptr % GetBlockSize() == 0);
-      assert(pread_sz % GetBlockSize() == 0);
-      assert(r_off % GetBlockSize() == 0);
+//      assert((uint64_t)ptr % GetBlockSize() == 0);
+//      assert(pread_sz % GetBlockSize() == 0);
+//      assert(r_off % GetBlockSize() == 0);
       r = pread(f_direct, ptr, pread_sz, r_off);
     } else {
       r = pread(f, ptr, pread_sz, r_off);

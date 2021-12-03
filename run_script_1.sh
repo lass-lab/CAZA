@@ -39,7 +39,7 @@ DEV=nullb1
 
 #./db_bench \
 #     --fs_uri=zenfs://dev:$DEV \
-#     --benchmarks=overwrite,stats \
+#     --benchmarks=fillrandom,stats \
 #     -statistics \
 #     --num=131151482 \
 #     --threads=1 \

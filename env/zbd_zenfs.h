@@ -220,8 +220,9 @@ class ZonedBlockDevice {
   void NotifyIOZoneFull();
   void NotifyIOZoneClosed();
 
-  int ZoneCleaning();
-  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&);
+  int ZoneCleaning(int);
+  void printVictimInformation(const Zone*, bool);
+  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&, bool);
 
 };
 

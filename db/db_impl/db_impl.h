@@ -147,6 +147,7 @@ class DBImpl : public DB {
   //Only Used for ZenFS Experiment
   std::mutex compaction_input_mutex_;
   std::ofstream lsm_ofile;
+  std::ofstream comp_ofile;
   std::mutex lsm_ofile_mutex_;
   std::chrono::time_point<std::chrono::system_clock> start_t_;
 

@@ -85,6 +85,8 @@ using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 using GFLAGS_NAMESPACE::RegisterFlagValidator;
 using GFLAGS_NAMESPACE::SetUsageMessage;
 
+bool FLAGS_rerun = false;
+
 DEFINE_string(
     benchmarks,
     "fillseq,"
@@ -4200,6 +4202,7 @@ class Benchmark {
           db->db = ptr;
         }
       } else {
+        fprintf(stderr, "DB::Open()\n");
         s = DB::Open(options, db_name, column_families, &db->cfh, &db->db);
       }
 #else
@@ -4383,8 +4386,7 @@ class Benchmark {
     int64_t ops_per_stage = max_ops;
     if (FLAGS_num_column_families > 1 && FLAGS_num_hot_column_families > 0) {
       ops_per_stage = (max_ops - 1) / (FLAGS_num_column_families /
-                                       FLAGS_num_hot_column_families) +
-                      1;
+                                       FLAGS_num_hot_column_families) + 1;
     }
 
     Duration duration(test_duration, max_ops, ops_per_stage);

@@ -164,7 +164,7 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, std::string filename,
       filename_(filename),
       file_id_(file_id),
       nr_synced_extents_(0),
-      level_(-99),
+      level_(100),
       is_appending_(false),
       marked_for_del_(false),
       should_flush_full_buffer_(false),
@@ -438,7 +438,7 @@ IOStatus ZoneFile::AppendBuffer() {
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_);
+    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -451,7 +451,7 @@ IOStatus ZoneFile::AppendBuffer() {
     if (active_zone_->capacity_ == 0) {
       PushExtent(); 
       active_zone_->CloseWR();
-      active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_);
+      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }
@@ -498,7 +498,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_);
+    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -511,7 +511,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     if (active_zone_->capacity_ == 0) {
       PushExtent(); 
       active_zone_->CloseWR();
-      active_zone_ = zbd_->AllocateZone(smallest_, largest_, level_);
+      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }

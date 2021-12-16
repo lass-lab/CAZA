@@ -145,6 +145,7 @@ ZenFS::ZenFS(ZonedBlockDevice* zbd, std::shared_ptr<FileSystem> aux_fs,
   Info(logger_, "ZenFS initializing");
   next_file_id_ = 1;
   metadata_writer_.zenFS = this;
+  zbd_->SetFsPtr(this);
 }
 
 ZenFS::~ZenFS() {

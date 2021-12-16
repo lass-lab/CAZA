@@ -272,7 +272,9 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
-  lsm_ofile.open("lsm_state.txt");
+  lsm_ofile.open("lsm_state.txt", std::ios::app | std::ios::out);
+  comp_ofile.open("compactions.txt", std::ios::app | std::ios::out);
+
   start_t_ = std::chrono::system_clock::now();
 }
 
@@ -293,18 +295,17 @@ const InternalKeyComparator* DBImpl::GetDefaultICMP(){
 }
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
-    
-    std::ofstream outfile;
-    outfile.open("compactions.txt");
  
     for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
-        outfile << "job_id : " <<it->first << std::endl;
-        outfile << "num_files : "<<it->second.size() << std::endl;
+        comp_ofile << "job_id : " <<it->first << std::endl;
+        comp_ofile << "num_files : "<<it->second.size() << std::endl;
         for(auto num : it->second){
-            outfile << num << std::endl;
+            comp_ofile << num << std::endl;
         }
+        compaction_inputs_.clear();
     }
 }
+
 //Only used for ZenFS Experiment
 void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<CompactionInputFiles>* inputs){
     
@@ -321,6 +322,15 @@ void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<Compa
     
     compaction_input_mutex_.lock();
     compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
+    
+    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
+        comp_ofile << "job_id : " <<it->first << std::endl;
+        comp_ofile << "num_files : "<<it->second.size() << std::endl;
+        for(auto num : it->second){
+            comp_ofile << num << std::endl;
+        }
+        compaction_inputs_.clear();
+    }
     compaction_input_mutex_.unlock();
 }
 //Only used for ZenFS Experiment
@@ -382,21 +392,25 @@ void DBImpl::AdjacentFileList(const InternalKey& s, const InternalKey& l, const 
 
   auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
   CompactionInputFiles output_level_inputs;
-  CompactionInputFiles output_level_inputs_for_l01;
-
+  CompactionInputFiles output_level_inputs_2;
+  
   vstorage->GetOverlappingInputs(level+1, &s, &l, &output_level_inputs.files);
-  if (level == 1) {
-    vstorage->GetOverlappingInputs(0, &s, &l, &output_level_inputs_for_l01.files);
-  } else if (level == 0){
-    vstorage->GetOverlappingInputs(1, &s, &l, &output_level_inputs_for_l01.files);
+  
+  if (level != 0) {
+    vstorage->GetOverlappingInputs(level-1, &s, &l, &output_level_inputs_2.files);
+  } else {
+    vstorage->GetOverlappingInputs(0, &s, &l, &output_level_inputs_2.files);
   }
+  
   for (const auto& f : output_level_inputs.files) {
-    uint64_t fno = f->fd.GetNumber();
-    fno_list.push_back(fno);
+    if (!f->being_compacted){
+      uint64_t fno = f->fd.GetNumber();
+      fno_list.push_back(fno);
+    }
   }
  
-  if (level == 0 || level == 1) {
-    for (const auto& f : output_level_inputs_for_l01.files) {
+  for (const auto& f : output_level_inputs_2.files) {
+    if (!f->being_compacted) {
       uint64_t fno = f->fd.GetNumber();
       fno_list.push_back(fno);
     }

@@ -19,6 +19,9 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <fstream>
+#include <string>
+
 
 #include "db/blob/blob_file_addition.h"
 #include "db/blob/blob_file_builder.h"
@@ -925,6 +928,19 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
 
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
 
+/*
+  std::ofstream comp_real;
+  comp_real.open("real_comp"+std::to_string(job_id_));
+  
+  const std::vector<CompactionInputFiles>* aa = compact_->compaction->inputs();
+  
+  for(CompactionInputFiles ciff : *aa){
+    for (FileMetaData* ff : ciff.files) {
+        comp_real << ff->fd.GetNumber() <<" ";
+    }
+  }
+  comp_real<<std::endl;
+*/
   // Create compaction filter and fail the compaction if
   // IgnoreSnapshots() = false because it is not supported anymore
   const CompactionFilter* compaction_filter =
@@ -1142,7 +1158,6 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
                         &sub_compact->compaction_job_stats);
     }
   }
-
   sub_compact->compaction_job_stats.num_input_deletion_records =
       c_iter_stats.num_input_deletion_records;
   sub_compact->compaction_job_stats.num_corrupt_keys =

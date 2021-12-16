@@ -24,6 +24,7 @@
 #include <queue>
 #include <functional>
 #include <map>
+#include <chrono>
 
 #include <iostream>
 #include "db/db_impl/db_impl.h"
@@ -32,7 +33,7 @@
 #include "db/version_edit.h"
 
 namespace ROCKSDB_NAMESPACE {
-
+class ZenFS;
 class DBImpl;
 class Zone;
 class ZoneFile;
@@ -129,7 +130,6 @@ class InvalValComp{
 
 class Zone {
   ZonedBlockDevice *zbd_;
-
  public:
   explicit Zone(ZonedBlockDevice *zbd, struct zbd_zone *z, const uint32_t id);
 
@@ -147,6 +147,7 @@ class Zone {
  * (Corner Case) : All zone has no invalid data but cannot allocate since rough lifetime estimation*/
   double secondary_lifetime_;
   std::atomic<long> used_capacity_;
+  std::mutex zone_df_lock_;
 
   IOStatus Reset();
   IOStatus Finish();
@@ -181,6 +182,7 @@ class ZonedBlockDevice {
   std::vector<Zone *> io_zones;
   std::mutex io_zones_mtx;
 
+  bool tracker_exit;
   std::vector<Zone *> meta_zones;
   std::vector<Zone *> reserved_zones; // reserved for a Zone Cleaning
   int read_f_;
@@ -197,7 +199,8 @@ class ZonedBlockDevice {
 
   unsigned int max_nr_active_io_zones_;
   unsigned int max_nr_open_io_zones_;
- 
+  ZenFS* fs;
+
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
@@ -217,7 +220,8 @@ class ZonedBlockDevice {
   std::mutex df_mtx_;
   std::ofstream df_file;
   std::ofstream reset_file;
-
+  std::ofstream comp_file;
+  
   std::map<uint64_t, std::vector<int>> sst_to_zone_;
   std::map<int, Zone*> id_to_zone_;
 
@@ -226,10 +230,11 @@ class ZonedBlockDevice {
   virtual ~ZonedBlockDevice();
   uint64_t GetFreeSpace();
   uint64_t GetUsedSpace();
+  uint64_t GetTotalWritten();
   uint64_t GetReclaimableSpace();
 
   void printZoneStatus(const std::vector<Zone *>&);
-
+  void SetFsPtr(ZenFS* fss) {fs = fss;}
   IOStatus Open(bool readonly = false);
 
   Zone *GetIOZone(uint64_t offset);
@@ -240,7 +245,7 @@ class ZonedBlockDevice {
   Zone * AllocateZoneWithSameLevelFiles(const std::vector<uint64_t>&, const InternalKey, const InternalKey);
   void SameLevelFileList(const int, std::vector<uint64_t>&);
   void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&);
-  Zone *AllocateZone(InternalKey, InternalKey, int);
+  Zone *AllocateZone(Env::WriteLifeTimeHint, InternalKey, InternalKey, int, uint64_t);
   Zone *AllocateZoneForCleaning();
   Zone *AllocateMetaZone();
 
@@ -267,6 +272,10 @@ class ZonedBlockDevice {
   int ZoneCleaning(int);
   void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&, bool);
   void PrintVictimInformation(const Zone*, bool);
+  void Tracking();
+  void printDF();
+  std::thread tracker_;
+  std::chrono::time_point<std::chrono::system_clock> start_t_;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

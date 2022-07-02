@@ -147,6 +147,7 @@ class ZonedBlockDevice {
   std::vector<Zone *> reserved_zones;
 
   std::mutex io_zones_mtx;
+  bool tracker_exit;
 
   std::vector<Zone *> meta_zones;
   int read_f_;
@@ -168,6 +169,8 @@ class ZonedBlockDevice {
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
+  int num_reset_cnt;
+
   DBImpl* db_ptr_;
   void SetDBPointer(DBImpl* db);
   std::mutex zone_cleaning_mtx;
@@ -178,6 +181,7 @@ class ZonedBlockDevice {
   std::mutex df_mtx_;
   std::ofstream df_file;
   std::ofstream reset_file;
+  std::ofstream inval_cdf;
   std::atomic<unsigned long long> WR_DATA;
   std::atomic<unsigned long long> LAST_WR_DATA;
 
@@ -196,6 +200,7 @@ class ZonedBlockDevice {
   Zone *AllocateZoneForCleaning();
   Zone *AllocateMetaZone();
 
+  uint64_t GetTotalWritten();
   uint64_t GetFreeSpace();
   uint64_t GetUsedSpace();
   uint64_t GetReclaimableSpace();
@@ -223,6 +228,10 @@ class ZonedBlockDevice {
   int ZoneCleaning(int);
   void printVictimInformation(const Zone*, bool);
   void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&, bool);
+  void Tracking();
+  void printDF();
+  std::thread tracker_;
+  std::chrono::time_point<std::chrono::system_clock> start_t_;
 
 };
 

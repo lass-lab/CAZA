@@ -46,7 +46,7 @@ using std::fixed;
 /* Minimum of number of zones that makes sense */
 #define ZENFS_MIN_ZONES (32)
 
-#define RESERVED_ZONE_FOR_CLEANING (6)
+#define RESERVED_ZONE_FOR_CLEANING (10)
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -166,21 +166,6 @@ IOStatus Zone::Append(char *data, uint32_t size) {
     capacity_ -= ret;
     left -= ret;
   }
-  zbd_->df_mtx_.lock();
-  zbd_->WR_DATA += (uint64_t)ret;
-
-  if (((double)(zbd_->WR_DATA.load() - zbd_->LAST_WR_DATA.load())/(1024*1024*1024)) >= 10.0){
-
-     uint64_t used = zbd_->GetUsedSpace();
-     uint64_t free = zbd_->GetFreeSpace();
-     uint64_t reclaimable = zbd_->GetReclaimableSpace();
-     zbd_->df_file << "Free: " <<  free / (1024 * 1024) << "MB\n" <<
-                "Used: " << used / (1024 * 1024) << "MB\n" <<
-                "Reclaimable: " << reclaimable / (1024 * 1024) << "MB\n" <<
-                "amplification: " << (100 * reclaimable) / used << std::endl;
-    zbd_->LAST_WR_DATA.store(zbd_->WR_DATA);
-  }
-  zbd_->df_mtx_.unlock();
   return IOStatus::OK();
 }
 void Zone::Invalidate(ZoneExtent* extent) {
@@ -243,10 +228,44 @@ ZonedBlockDevice::ZonedBlockDevice(std::string bdevname,
   zc_in_progress_.store(false);
   WR_DATA.store(100);
   WR_DATA.store(0);
-  df_file.open("df_file.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
-  reset_file.open("reset_file.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
+  df_file.open("df_file.txt");
+  reset_file.open("reset_file.txt");
+  inval_cdf.open("zc_zone_stat.txt", std::ios::app | std::ios::out);
+  inval_cdf << "GC_cnt,start,wp,used_capacity,max_capacity,invalid,valid,capacity"<<endl;
   num_zc_cnt = 0;
+  num_reset_cnt = 0;
+  tracker_exit = false;
+  start_t_ = std::chrono::system_clock::now();
+  tracker_ = std::thread(&ZonedBlockDevice::Tracking, this);
 };
+
+void ZonedBlockDevice::Tracking() {
+  std::chrono::time_point<std::chrono::system_clock> cur_t_;
+  unsigned long long elapsed_;
+  while(1){
+      cur_t_ = std::chrono::system_clock::now();
+      elapsed_ = std::chrono::duration_cast<std::chrono::milliseconds>(cur_t_ - start_t_).count();
+      
+      if(elapsed_ >= 1000){
+       printDF();
+       start_t_ = cur_t_;
+      }
+      if(tracker_exit) break;
+  }
+}
+
+void ZonedBlockDevice::printDF() {
+  
+  uint64_t used = GetUsedSpace();
+  uint64_t free = GetFreeSpace();
+  uint64_t total = GetTotalWritten();
+  uint64_t reclaimable = GetReclaimableSpace();
+  
+  df_file << "Free: " <<  free / (1024 * 1024) << "MB\n" <<
+             "Used: " << used / (1024 * 1024) << "MB\n" <<
+             "Reclaimable: " << reclaimable / (1024 * 1024) << "MB\n" <<
+             "amplification: " << ((double)total/used)*100 << std::endl;
+}
 
 uint64_t ZonedBlockDevice::GetReclaimableSpace() {
   uint64_t reclaimable = 0;
@@ -262,6 +281,14 @@ uint64_t ZonedBlockDevice::GetUsedSpace() {
     used += z->used_capacity_;
   }
   return used;
+}
+
+uint64_t ZonedBlockDevice::GetTotalWritten() {
+  uint64_t total = 0;
+  for (const auto z : io_zones) {
+    total += z->wp_ - z->start_;
+  }
+  return total;
 }
 
 uint64_t ZonedBlockDevice::GetFreeSpace() {
@@ -452,6 +479,9 @@ void ZonedBlockDevice::LogZoneUsage() {
 
 ZonedBlockDevice::~ZonedBlockDevice() {
 
+  tracker_exit = true;
+  tracker_.join();
+  printDF();
   for (const auto z : meta_zones) {
     delete z;
   }
@@ -608,7 +638,6 @@ void ZonedBlockDevice::printVictimInformation(const Zone* z, bool is_zc) {
 
 
 Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
-
     
   Zone *allocated_zone = nullptr;
   Zone *finish_victim = nullptr;
@@ -617,6 +646,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
   Status s;
   
   io_zones_mtx.lock();
+  //printDF();
   /* Make sure we are below the zone open limit */
   {
     std::unique_lock<std::mutex> lk(zone_resources_mtx_);
@@ -641,8 +671,43 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
         }
 
       assert(all_invalid);
+      /*
       reset_file << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() << endl;
       printVictimInformation(z, false);
+      
+      for (auto zzz : io_zones) {
+        uint64_t valid_extent_length = 0;
+        uint64_t invalid_extent_length = 0;
+        std::vector<ZoneExtentInfo *> invalid_list;
+        std::vector<ZoneExtentInfo *> valid_list;
+        for(auto ext_info: zzz->extent_info_) {
+            while(zzz->is_append.load()){ }
+            if (ext_info->valid_) {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                valid_extent_length += (cur_length + pad);
+                valid_list.push_back(ext_info);
+            }else {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                invalid_extent_length += (cur_length + pad);
+                invalid_list.push_back(ext_info);
+            }
+        }
+
+        //Insert into queue with sorting by its invalid ratio. 
+        //Higher the invalid ratio, Higher the priority.
+        inval_cdf <<"GC," <<num_reset_cnt<<","<<zzz->start_ <<","<<zzz->wp_ <<","<<zzz->used_capacity_.load() <<","<<zzz->max_capacity_ <<","<< invalid_extent_length<<","<< valid_extent_length <<","<< zzz->capacity_ << endl;
+    }
+      num_reset_cnt++;*/
       s = z->Reset();
 
       if (!s.ok()) {
@@ -669,32 +734,27 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
       }
     }
   }
-
+#ifndef LAZY 
   //Check If the Space Amplifictaion is Over than Threshold
   {
     uint64_t free = GetFreeSpace();
     size_t nr_zones = io_zones.size();
     uint64_t total = (nr_zones * io_zones[0]->max_capacity_);
     double free_ratio = (((double)free / total) * 100);
-    bool trigger_zc = free_ratio < 20.0f;
+    bool trigger_zc = free_ratio <= 5.0f;
 
     if (trigger_zc){
      uint64_t num_zone_to_reset;
-     if (free_ratio > 15.0f){
-        num_zone_to_reset = nr_zones / 90;
-     } else if (free_ratio > 10.0f){
-        num_zone_to_reset = nr_zones / 30;
-     } else if (free_ratio > 5.0f){
-        num_zone_to_reset = nr_zones / 15;   
+     if (free_ratio > 3.0f){
+        num_zone_to_reset = nr_zones / 10;
      } else {
-        num_zone_to_reset = nr_zones;      
+        num_zone_to_reset = nr_zones / 6;
      }
-    
-    while (!gc_queue_.empty()){
+     while (!gc_queue_.empty()){
         auto a = gc_queue_.top();
         delete a;
         gc_queue_.pop();
-    }
+     }
 #ifdef EXPERIMENT
     cout << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() << endl;
 #endif
@@ -742,7 +802,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
    }
   
   }
-
+#endif
   /* Try to fill an already open zone(with the best life time diff) */
   for (const auto z : io_zones) {
     if ((!z->open_for_write_) && (z->used_capacity_ > 0) && !z->IsFull()) {
@@ -791,7 +851,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
     io_zones_mtx.unlock();
     return allocated_zone;
   }
-
+#ifndef LAZY
   if (!allocated_zone) {
     while (!gc_queue_.empty()){
         auto a = gc_queue_.top();
@@ -838,7 +898,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
         }
         //Insert into queue with sorting by its invalid ratio. 
         //Higher the invalid ratio, Higher the priority.
-        if (z->IsFull() && invalid_extent_length > 0 && !z->open_for_write_) {
+        if (invalid_extent_length > 0 && !z->open_for_write_) {
           gc_queue_.push(new GCVictimZone(z, invalid_extent_length));
         }
     }
@@ -879,6 +939,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime) {
         return allocated_zone;
     }
   }
+#endif
 
   io_zones_mtx.unlock();
   LogZoneStats();
@@ -973,11 +1034,12 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
     int reseted = 0;
     if (gc_queue_.empty()) 
         return 0;
-
+/*
     for (const auto rz : reserved_zones){
         rz->open_for_write_ = false;
         rz->Reset();
     }
+*/
 #ifdef EXPERIMENT
     uint64_t copied_data = 0;
 #endif
@@ -988,7 +1050,7 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
         Zone* cur_victim = gc_queue_.top()->get_zone_ptr();
         assert(cur_victim);
 
-        printVictimInformation(cur_victim, true);
+        //printVictimInformation(cur_victim, true);
         //Find the valid extents in currently selected zone.
         //Should recognize which file each extent belongs to.
         std::vector<ZoneExtentInfo *> valid_extents_info;
@@ -1134,36 +1196,62 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
                   }
                 }
                 zone_file->UpdateExtents(replace_extents_);
-//                fs->GetMetaWriter()->Persist(zone_file);
+                fs->GetMetaWriter()->Persist(zone_file);
                 zone_file->ExtentWriteUnlock();
             }            
             free(buff);
         }
         assert(!(cur_victim->open_for_write_));
         cur_victim->used_capacity_.store(0);
+/*
+      for (auto zzz : io_zones) {
+        uint64_t valid_extent_length = 0;
+        uint64_t invalid_extent_length = 0;
+        std::vector<ZoneExtentInfo *> invalid_list;
+        std::vector<ZoneExtentInfo *> valid_list;
+        for(auto ext_info: zzz->extent_info_) {
+            while(zzz->is_append.load()){ }
+            if (ext_info->valid_) {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                valid_extent_length += (cur_length + pad);
+                valid_list.push_back(ext_info);
+            }else {
+                uint64_t cur_length = (uint64_t)ext_info->length_;
+                uint64_t align = (uint64_t)(cur_length % block_sz_);
+                uint64_t pad = 0;
+                if(align){
+                    pad = block_sz_ - align;
+                }
+                invalid_extent_length += (cur_length + pad);
+                invalid_list.push_back(ext_info);
+            }
+        }
+
+        //Insert into queue with sorting by its invalid ratio. 
+        //Higher the invalid ratio, Higher the priority.
+        inval_cdf <<"GC," <<num_reset_cnt<<","<<zzz->start_ <<","<<zzz->wp_ <<","<<zzz->used_capacity_.load() <<","<<zzz->max_capacity_ <<","<< invalid_extent_length<<","<< valid_extent_length <<","<< zzz->capacity_ << endl;
+    }
+        num_reset_cnt++;
+*/
         cur_victim->Reset();
         active_io_zones_--;
         reseted++; 
         for (auto it = io_zones.begin() ; it != io_zones.end(); it++){
           if ((*it)->zone_id_ == cur_victim->zone_id_) {
-            io_zones.erase(it);
-            reserved_zones.push_back(cur_victim);
+              if(reserved_zones.size() < RESERVED_ZONE_FOR_CLEANING){
+                io_zones.erase(it);
+                reserved_zones.push_back(cur_victim);
+              }
             break;
           }
         }
         gc_queue_.pop();  
-        if (reseted > nr_reset) break;
-        uint64_t reclaimable = 0;
-        uint64_t used = 0;
-        for (const auto z : io_zones) {
-          used +=  z->used_capacity_;
-          if (z->IsFull()) 
-            reclaimable += (z->max_capacity_ - z->used_capacity_);
-        }
-        double sa = ((double)reclaimable / used);
-
-        if (sa <= (double)1.0) 
-          break;
+        if (reseted >= nr_reset) break;
     }
 #ifdef EXPERIMENT
     fprintf(stdout, "Total Copied Data in ZC : %lu\n", copied_data);

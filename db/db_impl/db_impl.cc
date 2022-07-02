@@ -272,7 +272,8 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
-  lsm_ofile.open("lsm_state.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
+  lsm_ofile.open("lsm_state.txt");
+  comp_ofile.open("compactions.txt");
   start_t_ = std::chrono::system_clock::now();
 }
 
@@ -288,15 +289,12 @@ unsigned long long DBImpl::GetTimeStamp(){
 
 //Only used for ZenFS Experiment
 void DBImpl::printCompactionHistory(){
-    
-    std::ofstream outfile;
-    outfile.open("compactions.txt", std::ofstream::out | std::ofstream::app | std::ofstream::ate);
  
     for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
-        outfile << "job_id : " <<it->first << std::endl;
-        outfile << "num_files : "<<it->second.size() << std::endl;
+        comp_ofile << "job_id : " <<it->first << std::endl;
+        comp_ofile << "num_files : "<<it->second.size() << std::endl;
         for(auto num : it->second){
-            outfile << num << std::endl;
+            comp_ofile << num << std::endl;
         }
     }
 }
@@ -317,6 +315,15 @@ void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<Compa
     
     compaction_input_mutex_.lock();
     compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
+
+    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
+        comp_ofile << "job_id : " <<it->first << std::endl;
+        comp_ofile << "num_files : "<<it->second.size() << std::endl;
+        for(auto num : it->second){
+            comp_ofile << num << std::endl;
+        }
+        compaction_inputs_.clear();
+    }
     compaction_input_mutex_.unlock();
 }
 //Only used for ZenFS Experiment

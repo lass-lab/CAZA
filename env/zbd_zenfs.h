@@ -204,6 +204,7 @@ class ZonedBlockDevice {
  public:
   std::atomic<int> append_cnt;
   int num_zc_cnt;
+  int num_reset_cnt;
   DBImpl* db_ptr_;
   void SetDBPointer(DBImpl* db);
   std::mutex zone_cleaning_mtx;
@@ -221,6 +222,7 @@ class ZonedBlockDevice {
   std::ofstream df_file;
   std::ofstream reset_file;
   std::ofstream comp_file;
+  std::ofstream inval_cdf;
   
   std::map<uint64_t, std::vector<int>> sst_to_zone_;
   std::map<int, Zone*> id_to_zone_;

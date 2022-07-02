@@ -265,8 +265,11 @@ ZonedBlockDevice::ZonedBlockDevice(std::string bdevname,
   WR_DATA.store(0);
   LAST_WR_DATA.store(100);
   num_zc_cnt = 0;
+  num_reset_cnt = 0;
   df_file.open("df_file.txt", std::ios::app | std::ios::out);
   reset_file.open("reset_file.txt", std::ios::app | std::ios::out);
+  inval_cdf.open("zc_zone_stat.txt",std::ios::app | std::ios::out);
+  inval_cdf <<"GC_cnt,start,wp,used_capacity,max_capacity,invalid,valid,capacity"<<endl;
   tracker_exit = false;
   start_t_ = std::chrono::system_clock::now();
   tracker_ = std::thread(&ZonedBlockDevice::Tracking, this);
@@ -359,7 +362,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly) {
     max_nr_open_io_zones_ = info.nr_zones;
   else
     max_nr_open_io_zones_ = info.max_nr_open_zones - 1;
-
+  
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        info.nr_zones, info.max_nr_active_zones, info.max_nr_open_zones);
 
@@ -887,8 +890,47 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime, Inter
         }
       }
       assert(all_invalid);
+/*
       reset_file << "GC triggered count : " << ++num_zc_cnt <<"Time : " << db_ptr_->GetTimeStamp() <<endl;
+
       PrintVictimInformation(z, false);
+      
+      for (auto zzz : io_zones) {
+          uint64_t valid_extent_length = 0;
+          uint64_t invalid_extent_length = 0;
+          std::vector<ZoneExtentInfo *> invalid_list;
+          std::vector<ZoneExtentInfo *> valid_list;
+          for(auto ext_info: zzz->extent_info_) {
+
+              //    Busy wait til Append request to the zone completed.
+              //    No need to check the condition in the loop 
+              //    since zone is allocated to one file at each time.
+
+              while(zzz->is_append.load()){ }
+
+              if(ext_info->valid_) {
+                  uint64_t cur_length = (uint64_t)ext_info->length_;
+                  uint64_t align = (uint64_t)(cur_length % block_sz_);
+                  uint64_t pad = 0;
+                  if(align){
+                      pad = block_sz_ - align;
+                  }
+                  valid_extent_length += (cur_length + pad);
+                  valid_list.push_back(ext_info);
+              }else {
+                  uint64_t cur_length = (uint64_t)ext_info->length_;
+                  uint64_t align = (uint64_t)(cur_length % block_sz_);
+                  uint64_t pad = 0;
+                  if(align){
+                      pad = block_sz_ - align;
+                  }
+                  invalid_extent_length += (cur_length + pad);
+                  invalid_list.push_back(ext_info);
+              }
+          }
+          inval_cdf <<"GC" <<num_reset_cnt<<","<<zzz->start_ <<","<<zzz->wp_ <<","<<zzz->used_capacity_.load() <<","<<zzz->max_capacity_ <<","<< invalid_extent_length<<","<< valid_extent_length <<","<< zzz->capacity_ << endl;
+      }
+      num_reset_cnt++;*/
       s = z->Reset();
 
       if (!s.ok()) {
@@ -915,11 +957,11 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime, Inter
     //fprintf(stderr, "total : %zu , free : %zu\n", total, free);
     double free_ratio = (((double)free / total) * 100);
 
-    bool trigger_zc = free_ratio <= 10.0f;
+    bool trigger_zc = free_ratio <= 5.0f;
    
     if (trigger_zc) {
       uint64_t num_zone_to_reset;
-      if (free_ratio > 5.0f) {
+      if (free_ratio > 3.0f) {
           num_zone_to_reset = nr_zones / 10;   
       } else {
           num_zone_to_reset = nr_zones / 6;       
@@ -1447,7 +1489,7 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
         int victim_zone_id = cur_victim->zone_id_;
         assert(cur_victim);
 
-        PrintVictimInformation(cur_victim, true);
+        //PrintVictimInformation(cur_victim, true);
 
         //Find the valid extents in currently selected zone.
         //Should recognize which file each extent belongs to.
@@ -1627,6 +1669,44 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
         }
         assert(!cur_victim->open_for_write_);
         cur_victim->used_capacity_.store(0);
+/*        
+        for (auto zzz : io_zones) {
+            uint64_t valid_extent_length = 0;
+            uint64_t invalid_extent_length = 0;
+            std::vector<ZoneExtentInfo *> invalid_list;
+            std::vector<ZoneExtentInfo *> valid_list;
+            for(auto ext_info: zzz->extent_info_) {
+
+                //    Busy wait til Append request to the zone completed.
+                //    No need to check the condition in the loop 
+                //    since zone is allocated to one file at each time.
+
+                while(zzz->is_append.load()){ }
+
+                if(ext_info->valid_) {
+                    uint64_t cur_length = (uint64_t)ext_info->length_;
+                    uint64_t align = (uint64_t)(cur_length % block_sz_);
+                    uint64_t pad = 0;
+                    if(align){
+                        pad = block_sz_ - align;
+                    }
+                    valid_extent_length += (cur_length + pad);
+                    valid_list.push_back(ext_info);
+                }else {
+                    uint64_t cur_length = (uint64_t)ext_info->length_;
+                    uint64_t align = (uint64_t)(cur_length % block_sz_);
+                    uint64_t pad = 0;
+                    if(align){
+                        pad = block_sz_ - align;
+                    }
+                    invalid_extent_length += (cur_length + pad);
+                    invalid_list.push_back(ext_info);
+                }
+            }
+            inval_cdf <<"GC" <<num_reset_cnt<<","<<zzz->start_ <<","<<zzz->wp_ <<","<<zzz->used_capacity_.load() <<","<<zzz->max_capacity_ <<","<< invalid_extent_length<<","<< valid_extent_length <<","<< zzz->capacity_ << endl;
+        }
+
+        num_reset_cnt++;*/
         cur_victim->Reset();
         active_io_zones_--;
         reseted++;
@@ -1680,7 +1760,6 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
         (*it)->used_capacity_.store(0);
     }
     zone_cleaning_mtx.unlock();
-    fprintf(stderr, "# of reserved zone : %zu\n", reserved_zones.size());
     return 1;
 }//ZoneCleaning();
 

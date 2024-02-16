@@ -1182,7 +1182,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime, Inter
     return allocated_zone;
   }
   
-  if (!allocated_zone) {
+  if (!allocated_zone && level != 100) {
     SameLevelFileList(level, fno_list);
     allocated_zone = AllocateZoneWithSameLevelFiles(fno_list, smallest, largest);
   }

@@ -1525,7 +1525,12 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
               pad_sz = block_sz_ - align; 
             }
 
-            char* buff = (char *)malloc(sizeof(char)*data_size);
+            char* buff;
+            int ret = posix_memalign((void**)&buff, 4096, data_size);
+
+            if(ret) {
+              fprintf(stderr, "Zone Cleaning : failed allocating alignment write buffer\n");
+            }
 
             int f = GetReadFD();
             int f_direct = GetReadDirectFD();

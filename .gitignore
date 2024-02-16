@@ -1,13 +1,8 @@
 tags
 
 *.o
-
+*.a
 *.d
 
-ttest.sh
-
 blkzone
-
 zenfs
-
-*.sh

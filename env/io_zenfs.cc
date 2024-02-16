@@ -427,7 +427,14 @@ IOStatus ZoneFile::AppendBuffer() {
     data_size += b->buffer_size_;
     valid_size += b->valid_size_;
   }
-  data = new char[data_size];
+  
+  int ret = posix_memalign((void**)&data, GetBlockSize(), data_size);
+  if (ret) {
+    fprintf(stderr, "failed allocating alignment write buffer\n");
+    exit(1);
+  }
+  assert(data != NULL);
+
   for(const auto& b : full_buffer_) {
     memcpy(data + buf_offset, b->buffer_, b->buffer_size_);
     buf_offset += b->buffer_size_;

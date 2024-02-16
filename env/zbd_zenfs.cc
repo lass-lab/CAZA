@@ -808,15 +808,17 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime, Inter
     //fprintf(stderr, "total : %zu , free : %zu\n", total, free);
     double free_ratio = (((double)free / total) * 100);
 
-    bool trigger_zc = free_ratio <= 5.0f;
+    bool trigger_zc = free_ratio <= 25.0f;
    
     if (trigger_zc) {
       uint64_t num_zone_to_reset;
-      if (free_ratio > 3.0f) {
-          num_zone_to_reset = nr_zones / 10;   
+      if (free_ratio > 25.0f) {
+          num_zone_to_reset = nr_zones / 15;   
+      } else if (free_ratio > 20.0f) {
+          num_zone_to_reset = nr_zones / 10;       
       } else {
-          num_zone_to_reset = nr_zones / 6;       
-      }    
+          num_zone_to_reset = nr_zones / 5;       
+      }
       while (!gc_queue_.empty()){
         auto a = gc_queue_.top();
         delete a;
@@ -863,7 +865,7 @@ Zone *ZonedBlockDevice::AllocateZone(Env::WriteLifeTimeHint file_lifetime, Inter
     }
    ZoneCleaning(num_zone_to_reset);
   }
-  }
+ }
 #endif
 
   if (sst_to_zone_.empty()) {
@@ -1298,7 +1300,6 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
     int reseted = 0;
 
     if (nr_reset == 0){
-       fprintf(stderr, "give empty zone!\n");
        for (auto it = reserved_zones.begin(); it != reserved_zones.end(); ){
           io_zones.push_back(*it);
           reserved_zones.erase(it);
@@ -1496,7 +1497,6 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
                   }
                 }
                 zone_file->UpdateExtents(replace_extents_);
-                fs->GetMetaWriter()->Persist(zone_file);
                 zone_file->ExtentWriteUnlock();
             }            
             free(buff);

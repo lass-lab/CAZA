@@ -1526,7 +1526,7 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
             }
 
             char* buff;
-            int ret = posix_memalign((void**)&buff, 4096, data_size);
+            int ret = posix_memalign((void**)&buff, GetBlockSize(), data_size);
 
             if(ret) {
               fprintf(stderr, "Zone Cleaning : failed allocating alignment write buffer\n");

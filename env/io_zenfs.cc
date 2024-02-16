@@ -409,7 +409,7 @@ void ZoneFile::ExtentWriteUnlock(){
 }
 
 IOStatus ZoneFile::FullBuffer(void* data, int data_size, int valid_size) {
-    Buffer * buf = new Buffer(data, data_size, valid_size);
+    Buffer * buf = new Buffer(data, data_size, valid_size, GetBlockSize());
     full_buffer_.push_back(buf);
 
     return IOStatus::OK();

@@ -24,7 +24,6 @@
 #include "zbd_zenfs.h"
 #include "db/version_edit.h"
 
-#define BlockSize 4096
 namespace ROCKSDB_NAMESPACE {
 
 class Buffer {
@@ -33,11 +32,11 @@ class Buffer {
   int valid_size_;
   char* buffer_;
 
-  explicit Buffer(void* data, int data_size, int valid_size)
+  explicit Buffer(void* data, int data_size, int valid_size, uint32_t block_size)
       :buffer_size_(data_size),
        valid_size_(valid_size)
        {
-          int ret = posix_memalign((void**)&buffer_, BlockSize, data_size);
+          int ret = posix_memalign((void**)&buffer_, block_size, data_size);
           if (ret) {
             fprintf(stderr, "failed allocating alignment write buffer\n");
             exit(1);

@@ -143,66 +143,14 @@ class DBImpl : public DB {
   void operator=(const DBImpl&) = delete;
 
   virtual ~DBImpl();
-  
-  //Only Used for ZenFS Experiment
-  std::mutex compaction_input_mutex_;
-  std::ofstream lsm_ofile;
-  std::ofstream comp_ofile;
-  std::mutex lsm_ofile_mutex_;
-  std::chrono::time_point<std::chrono::system_clock> start_t_;
-
-  std::mutex fd_mutex_;
-  std::map<int, std::vector<uint64_t>> compaction_inputs_;
   const InternalKeyComparator* GetDefaultICMP();
-  void printCompactionHistory();
-  void InsertCompactionFileList(const int &job_id, const std::vector<CompactionInputFiles> *inputs);
-  void LogLSMStateHistoryWithZoneState();
-  void CloseLSMHistoryFile() { 
-    lsm_ofile_mutex_.lock();
-    lsm_ofile.close();
-    lsm_ofile_mutex_.unlock();
-  }
-  unsigned long long GetTimeStamp();
-  //Only Used for ZenFS Experiment
   const Comparator* GetUserComp(){
-  //Only Used for ZenFS Experiment
-  const Comparator* user_cmp = versions_.get()->GetColumnFamilySet()->GetDefault()->current()->User_comparator();
-    
+    const Comparator* user_cmp 
+      = versions_.get()->GetColumnFamilySet()->GetDefault()->current()->User_comparator();
     assert(user_cmp);
     return user_cmp;
   }
-  //Only Used for ZenFS Experiment
-  void GetFileMetaForZFS(const std::string filename, int& level, Slice& smallest, Slice& largest) {
-      
-      assert(filename.substr(filename.length() -3 ) == "sst");
-      std::string fname = filename.substr(filename.length() - 10);
-      std::cerr << fname.substr(0,6) << std::endl;
-      
-      uint64_t fileno = stoul(fname.substr(0,6));
-      
-      for(auto* cfd : *versions_->GetColumnFamilySet()) {
-          
-          auto* version = cfd->current(); 
-          auto* sti = version->storage_info();
-          
-          for(int i = 0; i < sti->num_levels(); i++){
-              
-              for(auto* f : sti->LevelFiles(i)){
-
-                  if(fileno == f->fd.GetNumber()){
-                    
-                    level = i;
-                    smallest = f->smallest.user_key();
-                    largest = f->largest.user_key();
-                  
-                  }
-              }
-
-          }
-      }
-  }
   void FindClosestFilesWithSameLevel(const int, std::vector<uint64_t>&); 
-
   void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&); 
 
   void SameLevelFileList(const int, std::vector<uint64_t>&); 

@@ -217,12 +217,6 @@ class ZonedBlockDevice {
 
   std::map<uint64_t, ZoneFile*> files_;
   std::mutex files_mtx_;
-
-  std::mutex df_mtx_;
-  std::ofstream df_file;
-  std::ofstream reset_file;
-  std::ofstream comp_file;
-  std::ofstream inval_cdf;
   
   std::map<uint64_t, std::vector<int>> sst_to_zone_;
   std::map<int, Zone*> id_to_zone_;
@@ -247,7 +241,7 @@ class ZonedBlockDevice {
   Zone * AllocateZoneWithSameLevelFiles(const std::vector<uint64_t>&, const InternalKey, const InternalKey);
   void SameLevelFileList(const int, std::vector<uint64_t>&);
   void AdjacentFileList(const InternalKey&, const InternalKey&, const int, std::vector<uint64_t>&);
-  Zone *AllocateZone(Env::WriteLifeTimeHint, InternalKey, InternalKey, int, uint64_t);
+  Zone *AllocateZone(Env::WriteLifeTimeHint, InternalKey, InternalKey, int);
   Zone *AllocateZoneForCleaning();
   Zone *AllocateMetaZone();
 
@@ -272,12 +266,6 @@ class ZonedBlockDevice {
   void NotifyIOZoneClosed();
 
   int ZoneCleaning(int);
-  void printZoneExtentInfo(const std::vector<ZoneExtentInfo *>&, bool);
-  void PrintVictimInformation(const Zone*, bool);
-  void Tracking();
-  void printDF();
-  std::thread tracker_;
-  std::chrono::time_point<std::chrono::system_clock> start_t_;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

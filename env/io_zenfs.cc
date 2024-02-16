@@ -445,7 +445,7 @@ IOStatus ZoneFile::AppendBuffer() {
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
+    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -458,7 +458,7 @@ IOStatus ZoneFile::AppendBuffer() {
     if (active_zone_->capacity_ == 0) {
       PushExtent(); 
       active_zone_->CloseWR();
-      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
+      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }
@@ -505,7 +505,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
   IOStatus s;
 
   if (active_zone_ == NULL) {
-    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
+    active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_);
 
     if(!active_zone_) {
        return IOStatus::NoSpace("Zone allocation failure\n");
@@ -518,7 +518,7 @@ IOStatus ZoneFile::Append(void* data, int data_size, int valid_size) {
     if (active_zone_->capacity_ == 0) {
       PushExtent(); 
       active_zone_->CloseWR();
-      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_, fno_);
+      active_zone_ = zbd_->AllocateZone(lifetime_, smallest_, largest_, level_);
       if(!active_zone_) {
          return IOStatus::NoSpace("Zone allocation failure\n");
       }

@@ -272,95 +272,13 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   // we won't drop any deletion markers until SetPreserveDeletesSequenceNumber()
   // is called by client and this seqnum is advanced.
   preserve_deletes_seqnum_.store(0);
-  lsm_ofile.open("lsm_state.txt", std::ios::app | std::ios::out);
-  comp_ofile.open("compactions.txt", std::ios::app | std::ios::out);
-
-  start_t_ = std::chrono::system_clock::now();
 }
 
-unsigned long long DBImpl::GetTimeStamp(){
-
-    std::chrono::time_point<std::chrono::system_clock> cur_t_;
-    unsigned long long elapsed_;
-    cur_t_ = std::chrono::system_clock::now();
-    elapsed_ = std::chrono::duration_cast<std::chrono::milliseconds>(cur_t_ - start_t_).count();
-
-    return elapsed_;
-}
 const InternalKeyComparator* DBImpl::GetDefaultICMP(){
 
     auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
     return vstorage->InternalComparator();
 
-}
-//Only used for ZenFS Experiment
-void DBImpl::printCompactionHistory(){
- 
-    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
-        comp_ofile << "job_id : " <<it->first << std::endl;
-        comp_ofile << "num_files : "<<it->second.size() << std::endl;
-        for(auto num : it->second){
-            comp_ofile << num << std::endl;
-        }
-        compaction_inputs_.clear();
-    }
-}
-
-//Only used for ZenFS Experiment
-void DBImpl::InsertCompactionFileList(const int& job_id, const std::vector<CompactionInputFiles>* inputs){
-    
-    std::vector<uint64_t> file_nums;
-    int id = job_id;
-    for(const CompactionInputFiles cif : (*inputs)) {
-        for (const FileMetaData* fmeta : cif.files){
-            uint64_t fno = fmeta->fd.GetNumber();
-            file_nums.push_back(fno);
-        }
-    }
-    assert(!file_nums.empty());
-    assert(compaction_inputs_.find(job_id) == compaction_inputs_.end());
-    
-    compaction_input_mutex_.lock();
-    compaction_inputs_.insert(std::pair<int, std::vector<uint64_t>> (id, file_nums));
-    
-    for(auto it = compaction_inputs_.cbegin(); it !=  compaction_inputs_.end(); it++){
-        comp_ofile << "job_id : " <<it->first << std::endl;
-        comp_ofile << "num_files : "<<it->second.size() << std::endl;
-        for(auto num : it->second){
-            comp_ofile << num << std::endl;
-        }
-        compaction_inputs_.clear();
-    }
-    compaction_input_mutex_.unlock();
-}
-//Only used for ZenFS Experiment
-void DBImpl::LogLSMStateHistoryWithZoneState() {
-    lsm_ofile_mutex_.lock();
-    
-    auto vstorage = versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
-    lsm_ofile << "LSM_STATE " <<"Time : " << GetTimeStamp() << std::endl;
-    lsm_ofile << "version number : " << versions_->GetColumnFamilySet()->GetDefault()->current()->GetVersionNumber() << std::endl;
-
-    for(int i = 0; i < vstorage->num_levels(); i++) {
-        for(const auto* f : vstorage->LevelFiles(i)) {
-  
-            uint64_t fileno = f->fd.GetNumber();
-            int num_of_ext = fs_->GetZonedFileExtentNum(fileno);
-            assert(num_of_ext != -1);
-            
-            lsm_ofile << fileno <<","<<i<<","<<num_of_ext<<",";
-            for(int ext_no = 0; ext_no < num_of_ext; ext_no++){
-                if(ext_no > 0) lsm_ofile <<",";
-                int zone_id;
-                uint32_t extent_length;
-                uint32_t extent_start;
-                fs_->GetExtentInfo(fileno, ext_no, zone_id, extent_length, extent_start);
-                lsm_ofile << zone_id <<","<<extent_start<<","<<extent_length;
-            }
-            lsm_ofile<<std::endl;
-        }
-    }
-    lsm_ofile_mutex_.unlock();
 }
 
 void DBImpl::FindClosestFilesWithSameLevel(const int level, std::vector<uint64_t>& fno_list) {
@@ -372,7 +290,6 @@ void DBImpl::FindClosestFilesWithSameLevel(const int level, std::vector<uint64_t
     uint64_t fno = f->fd.GetNumber();
     fno_list.push_back(fno);
   }
-
 }
 
 void DBImpl::SameLevelFileList(const int level, std::vector<uint64_t>& fno_list){
@@ -385,7 +302,6 @@ void DBImpl::SameLevelFileList(const int level, std::vector<uint64_t>& fno_list)
     uint64_t fno = f->fd.GetNumber();
     fno_list.push_back(fno);
   }
-
 }
 
 void DBImpl::AdjacentFileList(const InternalKey& s, const InternalKey& l, const int level, std::vector<uint64_t>& fno_list){
@@ -806,8 +722,6 @@ DBImpl::~DBImpl() {
     closed_ = true;
     CloseHelper().PermitUncheckedError();
   }
-  printCompactionHistory();
-  CloseLSMHistoryFile();  
 }
 
 void DBImpl::MaybeIgnoreError(Status* s) const {

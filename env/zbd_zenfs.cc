@@ -1530,21 +1530,25 @@ int ZonedBlockDevice::ZoneCleaning(int nr_reset) {
             ++it;
         }
     }
-
     if (reserved_zones.size() < RESERVED_ZONE_FOR_CLEANING) {
       for ( auto it = io_zones.begin(); it !=io_zones.end(); ){
-       if ( ((*it)->IsEmpty()) && !((*it)->open_for_write_) && reserved_zones.size() != RESERVED_ZONE_FOR_CLEANING) {
+       if ( ((*it)->IsEmpty()) && !((*it)->open_for_write_)) {
             reserved_zones.push_back(*it);
             io_zones.erase(it);
         } else {
             ++it;
         }
+
+       if(reserved_zones.size() == RESERVED_ZONE_FOR_CLEANING) 
+         break;
       }
     }
+
     if (reserved_zones.size() > RESERVED_ZONE_FOR_CLEANING) {
 
       for ( auto it = reserved_zones.begin(); it !=reserved_zones.end(); ){
         if ( reserved_zones.size() != RESERVED_ZONE_FOR_CLEANING) {
+            assert((*it)->IsEmpty() && !((*it)->open_for_write_));
             io_zones.push_back(*it);
             reserved_zones.erase(it);
         } else {
